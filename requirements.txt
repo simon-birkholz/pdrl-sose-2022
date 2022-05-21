@@ -2,3 +2,6 @@ tensorflow
 tensorflow_datasets
 keras
 tqdm
+gym
+boardgame2
+open_spiel
