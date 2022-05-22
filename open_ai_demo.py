@@ -1,11 +1,15 @@
 import gym
 import boardgame2
 
+import time
+
 import numpy as np
 
 import tensorflow as tf
 from tensorflow.keras import Model, Input
 from tensorflow.keras.layers import Conv2D, ReLU, Add, BatchNormalization, GlobalAveragePooling2D, Dense, MaxPooling2D
+
+from mcts_demo import Node, mcts
 
 tf.config.set_visible_devices([], 'GPU')
 
@@ -32,7 +36,7 @@ def simpleCNN(n_filters=9):
     model = Model(inputs=inputs, outputs=outputs, name='Oscar', )
     model.summary()
 
-    model.compile(optimizer='adam', loss=[tf.keras.losses.CategoricalCrossentropy(), tf.keras.losses.MeanSquaredError()])
+    model.compile(optimizer='adam', loss=['categorical_crossentropy', 'mean_squared_error'])
 
     return model
 
@@ -80,6 +84,9 @@ observation = env.reset()
 
 obs_list = []
 action_list = []
+
+game_count = 0
+
 while True:
     env.render()
     #valid = env.get_valid(observation)
@@ -87,17 +94,22 @@ while True:
     #action = env.action_space.sample()
 
     tObs = transform_state(observation)
-    action, value = m.predict(np.array([tObs]))
-    valid = env.get_valid(observation)
 
-    action = action.reshape((3,3))
-    action[valid == 0] = 0
+    action = mcts(observation,m,env)
 
-    selected = np.unravel_index(action.argmax(),action.shape)
-    action_list.append(action.argmax())
+
+    #action, value = m.predict(np.array([tObs]))
+    #valid = env.get_valid(observation)
+
+    #action = action.reshape((3,3))
+    #action[valid == 0] = 0
+
+    selected = np.unravel_index(action,observation[0].shape)
+    action_list.append(action)
 
     observation, reward, done, info = env.step(selected)
     obs_list.append(observation)
+
     if done:
         print("Done with game. Reward: ",reward)
         states = np.array([transform_state(o) for o in obs_list])
@@ -108,6 +120,10 @@ while True:
         m.fit(x=states, y = [train_actions,train_values])
 
         observation = env.reset()
+        game_count += 1
+        if game_count > 100:
+            break
         continue
 env.render()
 env.close()
+m.save('first-tic-tac-toe-agent')
