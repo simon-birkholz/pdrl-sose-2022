@@ -34,6 +34,13 @@ def expand_action(action):
     v[action] = 1
     return v
 
+def normalize_pd(pd):
+    whole = sum(pd)
+    new_pd = np.zeros(len(pd))
+    for i in range(0,len(pd)):
+        new_pd[i] = pd[i] / whole
+    return new_pd
+
 
 class MonteCarloTreeSearch:
     """
@@ -68,6 +75,8 @@ class MonteCarloTreeSearch:
         # transform back todo also hide this
         policy = policy.flatten()
 
+        policy = normalize_pd(policy)
+
         self.head = Node(self, None, current_state, 1, policy, value[0, 0])
 
         # self.head.expand()
@@ -87,6 +96,8 @@ class MonteCarloTreeSearch:
 
         # apply move to tree search
         # self.head = self.head.children[selected_a]
+        # self.head.print_node('-')
+
         return selected_a
 
 
@@ -97,13 +108,19 @@ class Node:
         self.state = state  # the game state represented by the current node. Tuple of (board,player)
         self.P = P  # prior probability (policy value from parent node)
         self.policy = policy  # the initial policy of the neural network
-        self.Q = -1  # action value (not known yet)
+        self.Q = 0  # action value (not known yet)
         self.V = V
         self.N = 0  # visit count
         self.children = {}
 
     def __str__(self):
-        return f"Node: P: {self.P} Q: {self.Q} V: {self.V} Exp: {self.children > 0}"
+        return f"Node: P: {self.P} Q: {self.Q} V: {self.V} N: {self.N} Exp: {len(self.children) > 0}"
+
+    def print_node(self,a,depth=0):
+        print('\t' * depth + str(a) + ' '  + str(self))
+        for a_c,c in self.children.items():
+            c.print_node(a_c,depth+1)
+
 
     def upper_confidence_bound(self):
         """
@@ -186,5 +203,7 @@ class Node:
                 child_policy = child_policy[0].reshape((3, 3))
                 child_policy[valid == 0] = 0
                 child_policy = child_policy.flatten()
+
+                child_policy = normalize_pd(child_policy)
 
                 self.children[action] = Node(self.mcts, self, child_state, probability, child_policy, child_value[0, 0])

@@ -1,9 +1,10 @@
 import gym
 import boardgame2
-
+from collections import deque
 import time
 
 import numpy as np
+from sklearn.utils import shuffle
 
 import tensorflow as tf
 from tensorflow.keras import Model, Input
@@ -19,6 +20,10 @@ def simpleCNN(n_filters=9):
     inputs = Input(shape=(3, 3, 2))
 
     x = Conv2D(filters=n_filters, kernel_size=3, padding='same', strides=(1, 1))(inputs)
+    x = BatchNormalization()(x)
+    x = ReLU()(x)
+
+    x = Conv2D(filters=n_filters, kernel_size=3, padding='same', strides=(1, 1))(x)
     x = BatchNormalization()(x)
     x = ReLU()(x)
 
@@ -85,7 +90,7 @@ env = gym.make('TicTacToe-v0')
 print('observation space = {}'.format(env.observation_space))
 print('action space = {}'.format(env.action_space))
 
-m = simpleCNN(9)
+m = simpleCNN(64)
 
 
 def train_episode():
@@ -118,7 +123,8 @@ def train_episode():
             return [(transform_state(x[0]), x[1], (-1) ** (x[2] != reward)) for x in observations]
 
 
-def learn(n_iter=100):
+def learn(n_iter=100, queue_length=10):
+    history_train_examples = deque([],maxlen=queue_length)
     for i in tqdm(range(0,n_iter)):
         examples = train_episode()
 
@@ -126,7 +132,18 @@ def learn(n_iter=100):
         train_actions = np.array([expand_action(x[1]) for x in examples])
         train_values = np.array([x[2] for x in examples])
 
-        m.fit(x=train_board, y=[train_actions, train_values], verbose=0)
+        history_train_examples.append((train_board,train_actions,train_values))
+
+        t_boards = list()
+        t_actions = list()
+        t_values = list()
+        for b,a,v in history_train_examples:
+            t_boards += b.tolist()
+            t_actions += a.tolist()
+            t_values += v.tolist()
+        t_boards, t_actions, t_values = shuffle(np.array(t_boards),np.array(t_actions), np.array(t_values))
+
+        m.fit(x=t_boards, y=[t_actions, t_values], verbose=0)
 
 
 learn(50)

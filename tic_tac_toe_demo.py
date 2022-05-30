@@ -74,7 +74,7 @@ while True:
         selected_action = int(input("Enter your move: "))-1
     else:
         #selected_action = get_ai_move(m, observation)
-        selected_action = mcts.search(observation,5)
+        selected_action = mcts.search(observation,30)
 
     selected = np.unravel_index(selected_action, observation[0].shape)
 
