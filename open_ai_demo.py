@@ -36,6 +36,9 @@ def simpleCNN(n_filters=9):
     x = ReLU()(x)
 
     x = GlobalAveragePooling2D()(x)
+
+    x = Dense(512)(x)
+
     policy = Dense(9, activation='softmax')(x)
     value = Dense(1, activation='tanh')(x)
 
@@ -109,7 +112,7 @@ def train_episode():
         step_count += 1
 
         # todo return policy vector for learning
-        selected_action = mcts.search(observation, 10)
+        selected_action = mcts.search(observation, 25)
 
         # todo hide away because game specific
         selected = np.unravel_index(selected_action, observation[0].shape)
@@ -146,7 +149,7 @@ def learn(n_iter=100, queue_length=10):
         m.fit(x=t_boards, y=[t_actions, t_values], verbose=0)
 
 
-learn(50)
+learn(30)
 
 env.render()
 env.close()

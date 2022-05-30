@@ -95,8 +95,8 @@ class MonteCarloTreeSearch:
                 selected_a = action
 
         # apply move to tree search
-        # self.head = self.head.children[selected_a]
-        self.head.print_node('-')
+        #self.head = self.head.children[selected_a]
+        #self.head.print_node('-')
 
         return selected_a
 
