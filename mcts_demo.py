@@ -68,7 +68,7 @@ class MonteCarloTreeSearch:
         # transform back todo also hide this
         policy = policy.flatten()
 
-        self.head = Node(self, None, current_state, 1, policy, value)
+        self.head = Node(self, None, current_state, 1, policy, value[0, 0])
 
         # self.head.expand()
 
@@ -86,7 +86,7 @@ class MonteCarloTreeSearch:
                 selected_a = action
 
         # apply move to tree search
-        #self.head = self.head.children[selected_a]
+        # self.head = self.head.children[selected_a]
         return selected_a
 
 
@@ -135,18 +135,15 @@ class Node:
         if len(self.children) == 0:
             # leaf node, expand and return network value
             self.expand()
+            self.N = 0
             return -self.V
 
         selected_child = self.select()
         value = selected_child.search()
 
-        if self.Q > 0:
-            # average the Q action value and increase visit count
-            self.Q = (self.N * self.Q + value) / (self.N + 1)
-            self.N += 1
-        else:
-            self.Q = value
-            self.N = 1
+        # average the Q action value and increase visit count
+        self.Q = (self.N * self.Q + value) / (self.N + 1)
+        self.N += 1
 
         return -value
 
@@ -159,9 +156,9 @@ class Node:
         max_ucb = float('-inf')
         for action, child in self.children.items():
             ucb = child.upper_confidence_bound()
-            if ucb > max_ucb:
-                max_ucb = ucb
-                selected = child
+        if ucb > max_ucb:
+            max_ucb = ucb
+            selected = child
         return selected
 
     def expand(self):
@@ -190,4 +187,4 @@ class Node:
                 child_policy[valid == 0] = 0
                 child_policy = child_policy.flatten()
 
-                self.children[action] = Node(self.mcts, self, child_state, probability, child_policy, child_value)
+                self.children[action] = Node(self.mcts, self, child_state, probability, child_policy, child_value[0, 0])
