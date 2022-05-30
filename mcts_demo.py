@@ -96,7 +96,7 @@ class MonteCarloTreeSearch:
 
         # apply move to tree search
         # self.head = self.head.children[selected_a]
-        # self.head.print_node('-')
+        self.head.print_node('-')
 
         return selected_a
 
@@ -114,7 +114,7 @@ class Node:
         self.children = {}
 
     def __str__(self):
-        return f"Node: P: {self.P} Q: {self.Q} V: {self.V} N: {self.N} Exp: {len(self.children) > 0}"
+        return f"Node: P: {self.P} Q: {self.Q} V: {self.V} N: {self.N} Exp: {len(self.children) > 0} T: {self.is_terminal_state()}"
 
     def print_node(self,a,depth=0):
         print('\t' * depth + str(a) + ' '  + str(self))

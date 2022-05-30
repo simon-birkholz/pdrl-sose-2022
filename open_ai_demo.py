@@ -120,7 +120,7 @@ def train_episode():
         if done:
             #print("Done with game. Outcome: ", reward)
 
-            return [(transform_state(x[0]), x[1], (-1) ** (x[2] != reward)) for x in observations]
+            return [(transform_state(x[0]), x[1], (-1) ** (x[0][1] != reward)) for x in observations]
 
 
 def learn(n_iter=100, queue_length=10):
