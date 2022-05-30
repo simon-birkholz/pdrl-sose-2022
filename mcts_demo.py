@@ -1,17 +1,16 @@
 import numpy as np
 
 
-
-
 def transform_state(observation):
     board, player = observation
-    res = np.zeros((3,3,2))
+    res = np.zeros((3, 3, 2))
     nBoard = np.array(board * player)
     f1 = nBoard == 1
     f2 = nBoard == -1
-    res[:,:,0] = f1
-    res[:,:,1] = f2
+    res[:, :, 0] = f1
+    res[:, :, 1] = f2
     return np.asarray(res)
+
 
 def get_board(observation):
     board, _ = observation
@@ -22,11 +21,13 @@ def get_board(observation):
     res[:, :, 1] = f2
     return np.asarray(res)
 
+
 def flip_colors(board):
     res = np.zeros((3, 3, 2))
-    res[:,:,0] = board[:,:,1]
-    res[:,:,1] = board[:,:,0]
+    res[:, :, 0] = board[:, :, 1]
+    res[:, :, 1] = board[:, :, 0]
     return res
+
 
 def expand_action(action):
     v = np.zeros(9)
@@ -34,97 +35,159 @@ def expand_action(action):
     return v
 
 
+class MonteCarloTreeSearch:
+    """
+    Wrap the Monte Carlo Tree Search in a class which accepts all necessary parameters
+    and hides the unnecessary details for the user
+    """
+
+    def __init__(self, game, model):
+        self.game = game  # the game enviroment used for the mcts search
+        self.model = model  # the neural network used by the mcts search
+        self.head = None  # the intro node for the tree
+
+    def search(self, current_state, n_sim=10):
+        """
+        Performs the mcts for the current move
+        :return:
+        """
+        tObs = transform_state(current_state)
+
+        # if self.head is None:
+        # Init initial node
+        policy, value = self.model.predict(np.array([tObs]), verbose=0)
+
+        valid = self.game.get_valid(current_state)
+
+        # todo write better wrapper class to hide the concrete shape of the policy
+        policy = policy[0].reshape((3, 3))
+
+        # give invalid move a probability of zero
+        policy[valid == 0] = 0
+
+        # transform back todo also hide this
+        policy = policy.flatten()
+
+        self.head = Node(self, None, current_state, 1, policy, value)
+
+        # self.head.expand()
+
+        for i in range(0, n_sim):
+            self.head.search()
+
+        # select most visited move
+
+        most_visit_count = -1
+        selected_a = -1
+
+        for action, child in self.head.children.items():
+            if child.N > most_visit_count:
+                most_visit_count = child.N
+                selected_a = action
+
+        # apply move to tree search
+        #self.head = self.head.children[selected_a]
+        return selected_a
+
+
 class Node:
-    def __init__(self, parent, state,policy, P,V, Q, player):
-        self.parent = parent
-        self.state = state
-        self.policy = policy
-        self.P = P  # prior probability
-        self.Q = Q  # action value
+    def __init__(self, mcts, parent, state, P, policy, V):
+        self.mcts = mcts  # reference to the wrapper of the search
+        self.parent = parent  # the parent node for the current node
+        self.state = state  # the game state represented by the current node. Tuple of (board,player)
+        self.P = P  # prior probability (policy value from parent node)
+        self.policy = policy  # the initial policy of the neural network
+        self.Q = -1  # action value (not known yet)
         self.V = V
         self.N = 0  # visit count
-        self.player = player
         self.children = {}
 
     def __str__(self):
         return f"Node: P: {self.P} Q: {self.Q} V: {self.V} Exp: {self.children > 0}"
 
-def select(node):
-    selected_node = None
-    max_ucb = 0
-    for action, child in node.children.items():
-        ucb = upper_confidence_bound(child)
-        if ucb > max_ucb:
-            max_ucb = ucb
-            selected_node = child
+    def upper_confidence_bound(self):
+        """
+        Calculates the upper confidence bound as given in the paper
+        :return:
+        """
+        U = self.P / (1 + self.N)
+        return self.Q + U
 
-    return selected_node
+    def is_terminal_state(self):
+        """
+        Returns if the current node is a terminal state
+        :return:
+        """
+        res = self.mcts.game.get_winner(self.state)
+        if res is None:
+            return False
+        return True
 
+    def search(self):
+        """
+        Searches the tree by applying the mcts search algorithm
+        :return: the current Q value for the node
+        """
+        if self.is_terminal_state():
+            # terminal node found return game value
+            return -self.mcts.game.get_winner(self.state)
 
-def upper_confidence_bound(node):
-    U = node.P / (1 + node.N)
-    return node.Q + U
+        if len(self.children) == 0:
+            # leaf node, expand and return network value
+            self.expand()
+            return -self.V
 
+        selected_child = self.select()
+        value = selected_child.search()
 
-def expand(node,model, env):
-    for action, probability in enumerate(node.policy):
+        if self.Q > 0:
+            # average the Q action value and increase visit count
+            self.Q = (self.N * self.Q + value) / (self.N + 1)
+            self.N += 1
+        else:
+            self.Q = value
+            self.N = 1
 
-        if probability > 0:
-            #child_state = apply_action(node.state, action)
+        return -value
 
-            s_a = np.unravel_index(action, node.state.shape)
+    def select(self):
+        """
+        Selects a node by the rules given in the paper
+        :return: tuple of (a,node) where a is the action represented by the node
+        """
+        selected = None
+        max_ucb = float('-inf')
+        for action, child in self.children.items():
+            ucb = child.upper_confidence_bound()
+            if ucb > max_ucb:
+                max_ucb = ucb
+                selected = child
+        return selected
 
-            child_state, v, done,_ = env.next_step((node.state,node.player),s_a)
-            tChildState = transform_state(child_state)
+    def expand(self):
+        if len(self.children) > 0:
+            # node already expanded
+            return
 
-            child_policy, child_value = model.predict(np.array([tChildState]))
+        for action, probability in enumerate(self.policy):
 
-            valid = env.get_valid(child_state)
+            # todo because policy probabilites can be zero, we need to normalize the remaining probabilities
 
-            child_policy = child_policy[0].reshape((3, 3))
-            child_policy[valid == 0] = 0
-            child_policy = child_policy.flatten()
-            node.children[action] = Node(node, child_state[0],child_policy, probability, child_value * child_state[1],v, child_state[1])
+            if probability > 0:
+                # child_state = apply_action(node.state, action)
 
+                s_a = np.unravel_index(action, self.state[0].shape)
 
-# TODO
-def mcts(obs, model, env, simulations=10):
+                child_state, v, done, _ = self.mcts.game.next_step(self.state, s_a)
+                tChildState = transform_state(child_state)
 
-    tObs = transform_state(obs)
+                child_policy, child_value = self.mcts.model.predict(np.array([tChildState]), verbose=0)
 
-    policy , value = model.predict(np.array([tObs]))
+                valid = self.mcts.game.get_valid(child_state)
 
-    valid = env.get_valid(obs)
+                # todo hide this details away (because game specific)
+                child_policy = child_policy[0].reshape((3, 3))
+                child_policy[valid == 0] = 0
+                child_policy = child_policy.flatten()
 
-    policy = policy[0].reshape((3, 3))
-    policy[valid == 0] = 0
-    policy = policy.flatten()
-
-
-    root = Node(None,obs[0],policy,1,value,-1,obs[1])
-
-    expand(root,model,env)
-
-    for i in range(simulations):
-        node = select(root)
-        while True:
-            if terminal_state(node,env):
-                back_propagate(node)
-                break
-            if len(node.children) == 0:
-                expand(node,model,env)
-            node = select(node)
-
-    #return np.array([n.Q for a,n in root.children.items()]).argmax()
-    return max(root.children, key=(lambda new_k: root.children[new_k].Q))
-
-# TODO
-def terminal_state(node,env):
-    res = env.get_winner((node.state,node.player))
-    if res is None:
-        return False
-    return True
-
-
-def back_propagate(node):
-    return
+                self.children[action] = Node(self.mcts, self, child_state, probability, child_policy, child_value)

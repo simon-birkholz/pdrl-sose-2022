@@ -9,9 +9,11 @@ import tensorflow as tf
 from tensorflow.keras import Model, Input
 from tensorflow.keras.layers import Conv2D, ReLU, Add, BatchNormalization, GlobalAveragePooling2D, Dense, MaxPooling2D
 
-from mcts_demo import Node, mcts
+from mcts_demo import MonteCarloTreeSearch
+from tqdm import tqdm
 
 tf.config.set_visible_devices([], 'GPU')
+
 
 def simpleCNN(n_filters=9):
     inputs = Input(shape=(3, 3, 2))
@@ -40,15 +42,17 @@ def simpleCNN(n_filters=9):
 
     return model
 
+
 def transform_state(observation):
     board, player = observation
-    res = np.zeros((3,3,2))
+    res = np.zeros((3, 3, 2))
     nBoard = np.array(board * player)
     f1 = nBoard == 1
     f2 = nBoard == -1
-    res[:,:,0] = f1
-    res[:,:,1] = f2
+    res[:, :, 0] = f1
+    res[:, :, 1] = f2
     return np.asarray(res)
+
 
 def get_board(observation):
     board, _ = observation
@@ -59,18 +63,21 @@ def get_board(observation):
     res[:, :, 1] = f2
     return np.asarray(res)
 
+
 def flip_colors(board):
     res = np.zeros((3, 3, 2))
-    res[:,:,0] = board[:,:,1]
-    res[:,:,1] = board[:,:,0]
+    res[:, :, 0] = board[:, :, 1]
+    res[:, :, 1] = board[:, :, 0]
     return res
+
 
 def expand_action(action):
     v = np.zeros(9)
     v[action] = 1
     return v
 
-t = transform_state(([[1,-1,1],[1,-1,1],[1,-1,1]],1))
+
+t = transform_state(([[1, -1, 1], [1, -1, 1], [1, -1, 1]], 1))
 print(t)
 
 env = gym.make('TicTacToe-v0')
@@ -80,50 +87,50 @@ print('action space = {}'.format(env.action_space))
 
 m = simpleCNN(9)
 
-observation = env.reset()
 
-obs_list = []
-action_list = []
+def train_episode():
+    """
+    Executes one episode of the self-play algorithm
+    :return:
+    """
+    observations = []
+    observation = env.reset()
+    mcts = MonteCarloTreeSearch(env, m)
 
-game_count = 0
+    step_count = 0
+    while True:
+        #env.render()
+        #print("\n")
+        step_count += 1
 
-while True:
-    env.render()
-    #valid = env.get_valid(observation)
-    print("\n")
-    #action = env.action_space.sample()
+        # todo return policy vector for learning
+        selected_action = mcts.search(observation, 10)
 
-    tObs = transform_state(observation)
+        # todo hide away because game specific
+        selected = np.unravel_index(selected_action, observation[0].shape)
 
-    action = mcts(observation,m,env)
+        observations.append([observation, selected_action, None])
+
+        observation, reward, done, info = env.step(selected)
+        if done:
+            #print("Done with game. Outcome: ", reward)
+
+            return [(transform_state(x[0]), x[1], (-1) ** (x[2] != reward)) for x in observations]
 
 
-    #action, value = m.predict(np.array([tObs]))
-    #valid = env.get_valid(observation)
+def learn(n_iter=100):
+    for i in tqdm(range(0,n_iter)):
+        examples = train_episode()
 
-    #action = action.reshape((3,3))
-    #action[valid == 0] = 0
+        train_board = np.array([x[0] for x in examples])
+        train_actions = np.array([expand_action(x[1]) for x in examples])
+        train_values = np.array([x[2] for x in examples])
 
-    selected = np.unravel_index(action,observation[0].shape)
-    action_list.append(action)
+        m.fit(x=train_board, y=[train_actions, train_values], verbose=0)
 
-    observation, reward, done, info = env.step(selected)
-    obs_list.append(observation)
 
-    if done:
-        print("Done with game. Reward: ",reward)
-        states = np.array([transform_state(o) for o in obs_list])
-        #train_boards = [board for board in states] + [flip_colors(board) for board in states]
-        train_actions = np.array([expand_action(a) for a in action_list])
-        train_values = np.array([o[1] * reward for o in obs_list])
+learn(50)
 
-        m.fit(x=states, y = [train_actions,train_values])
-
-        observation = env.reset()
-        game_count += 1
-        if game_count > 100:
-            break
-        continue
 env.render()
 env.close()
 m.save('first-tic-tac-toe-agent')
