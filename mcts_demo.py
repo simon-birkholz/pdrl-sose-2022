@@ -130,7 +130,7 @@ class Node:
         """
         if self.is_terminal_state():
             # terminal node found return game value
-            return -self.mcts.game.get_winner(self.state)
+            return (-1) ** (self.state[1] == self.mcts.game.get_winner(self.state))
 
         if len(self.children) == 0:
             # leaf node, expand and return network value
@@ -156,9 +156,9 @@ class Node:
         max_ucb = float('-inf')
         for action, child in self.children.items():
             ucb = child.upper_confidence_bound()
-        if ucb > max_ucb:
-            max_ucb = ucb
-            selected = child
+            if ucb > max_ucb:
+                max_ucb = ucb
+                selected = child
         return selected
 
     def expand(self):

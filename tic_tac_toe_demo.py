@@ -1,9 +1,12 @@
 from tensorflow import keras
+import tensorflow as tf
 import gym
 import boardgame2
 import numpy as np
 
 from mcts_demo import MonteCarloTreeSearch
+
+tf.config.set_visible_devices([], 'GPU')
 
 def transform_state(observation):
     board, player = observation
@@ -71,7 +74,7 @@ while True:
         selected_action = int(input("Enter your move: "))-1
     else:
         #selected_action = get_ai_move(m, observation)
-        selected_action = mcts.search(observation,20)
+        selected_action = mcts.search(observation,5)
 
     selected = np.unravel_index(selected_action, observation[0].shape)
 
