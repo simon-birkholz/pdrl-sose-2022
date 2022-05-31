@@ -5,6 +5,7 @@ import boardgame2
 import numpy as np
 
 from mcts_demo import MonteCarloTreeSearch
+from tqdm import tqdm
 
 tf.config.set_visible_devices([], 'GPU')
 
@@ -74,7 +75,7 @@ while True:
         selected_action = int(input("Enter your move: "))-1
     else:
         #selected_action = get_ai_move(m, observation)
-        selected_action = mcts.search(observation,25)
+        selected_action = mcts.search(observation,50)
 
     selected = np.unravel_index(selected_action, observation[0].shape)
 
