@@ -5,6 +5,7 @@ import boardgame2
 import numpy as np
 
 from mcts_demo import MonteCarloTreeSearch
+from tqdm import tqdm
 
 tf.config.set_visible_devices([], 'GPU')
 
