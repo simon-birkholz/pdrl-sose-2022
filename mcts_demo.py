@@ -34,10 +34,11 @@ def expand_action(action):
     v[action] = 1
     return v
 
+
 def normalize_pd(pd):
     whole = sum(pd)
     new_pd = np.zeros(len(pd))
-    for i in range(0,len(pd)):
+    for i in range(0, len(pd)):
         new_pd[i] = pd[i] / whole
     return new_pd
 
@@ -77,7 +78,7 @@ class MonteCarloTreeSearch:
 
         policy = normalize_pd(policy)
 
-        self.head = Node(self, None, current_state, 1, policy, value[0, 0])
+        self.head = Node(self, None, current_state, policy, value[0, 0])
 
         # self.head.expand()
 
@@ -89,46 +90,52 @@ class MonteCarloTreeSearch:
         most_visit_count = -1
         selected_a = -1
 
-        for action, child in self.head.children.items():
-            if child.N > most_visit_count:
-                most_visit_count = child.N
+        for action in self.head.N.keys():
+            if self.head.N[action] > most_visit_count:
+                most_visit_count = self.head.N[action]
                 selected_a = action
 
         # apply move to tree search
-        #self.head = self.head.children[selected_a]
-        #self.head.print_node('-')
+        # self.head = self.head.children[selected_a]
+        # self.head.print_node('-')
 
         return selected_a
 
 
 class Node:
-    def __init__(self, mcts, parent, state, P, policy, V):
+    def __init__(self, mcts, parent, state, P, V):
         self.mcts = mcts  # reference to the wrapper of the search
         self.parent = parent  # the parent node for the current node
         self.state = state  # the game state represented by the current node. Tuple of (board,player)
-        self.P = P  # prior probability (policy value from parent node)
-        self.policy = policy  # the initial policy of the neural network
-        self.Q = 0  # action value (not known yet)
+        self.P = P  # prior probabilities for all s_a to child nodes
+        self.Q = {}  # action value
         self.V = V
-        self.N = 0  # visit count
+        self.N = {}  # visit count
         self.children = {}
 
     def __str__(self):
-        return f"Node: P: {self.P} Q: {self.Q} V: {self.V} N: {self.N} Exp: {len(self.children) > 0} T: {self.is_terminal_state()}"
-
-    def print_node(self,a,depth=0):
-        print('\t' * depth + str(a) + ' '  + str(self))
-        for a_c,c in self.children.items():
-            c.print_node(a_c,depth+1)
+        return f"Node: V: {self.V} Exp: {len(self.children) > 0} T: {self.is_terminal_state()}"
 
 
-    def upper_confidence_bound(self):
+
+    def print_node(self, a, p_a = 0, q_a = 0, n_a = 0, depth=0):
+        node_str =  f"Node: P: {p_a} Q: {q_a} N: {n_a} V: {self.V} Exp: {len(self.children) > 0} T: {self.is_terminal_state()}"
+        print('\t' * depth + str(a) + ' ' + node_str)
+        for a_c, c in self.children.items():
+            c.print_node(a_c,self.P[a_c], self.Q.get(a_c), self.N.get(a_c), depth + 1)
+
+    def upper_confidence_bound(self, action):
         """
         Calculates the upper confidence bound as given in the paper
         :return:
         """
-        U = self.P / (1 + self.N)
-        return self.Q + U
+        if action in self.N.keys():
+            U = self.P[action] / (1 + self.N[action])
+            return self.Q[action] + U
+        else:
+            # edge has never been visited
+            U = self.P[action]
+            return U
 
     def is_terminal_state(self):
         """
@@ -152,15 +159,18 @@ class Node:
         if len(self.children) == 0:
             # leaf node, expand and return network value
             self.expand()
-            self.N = 0
             return -self.V
 
-        selected_child = self.select()
+        s_a, selected_child = self.select()
         value = selected_child.search()
 
-        # average the Q action value and increase visit count
-        self.Q = (self.N * self.Q + value) / (self.N + 1)
-        self.N += 1
+        if s_a in self.Q.keys():
+            # average the Q action value and increase visit count
+            self.Q[s_a] = (self.N[s_a] * self.Q[s_a] + value) / (self.N[s_a] + 1)
+            self.N[s_a] += 1
+        else:
+            self.Q[s_a] = value
+            self.N[s_a] = 1
 
         return -value
 
@@ -172,10 +182,10 @@ class Node:
         selected = None
         max_ucb = -float('inf')
         for action, child in self.children.items():
-            ucb = child.upper_confidence_bound()
+            ucb = self.upper_confidence_bound(action)
             if ucb > max_ucb:
                 max_ucb = ucb
-                selected = child
+                selected = action, self.children[action]
         return selected
 
     def expand(self):
@@ -183,7 +193,7 @@ class Node:
             # node already expanded
             return
 
-        for action, probability in enumerate(self.policy):
+        for action, probability in enumerate(self.P):
 
             # todo because policy probabilites can be zero, we need to normalize the remaining probabilities
 
@@ -206,4 +216,4 @@ class Node:
 
                 child_policy = normalize_pd(child_policy)
 
-                self.children[action] = Node(self.mcts, self, child_state, probability, child_policy, child_value[0, 0])
+                self.children[action] = Node(self.mcts, self, child_state, child_policy, child_value[0, 0])

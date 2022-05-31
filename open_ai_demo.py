@@ -112,7 +112,7 @@ def train_episode():
         step_count += 1
 
         # todo return policy vector for learning
-        selected_action = mcts.search(observation, 25)
+        selected_action = mcts.search(observation, 50)
 
         # todo hide away because game specific
         selected = np.unravel_index(selected_action, observation[0].shape)
