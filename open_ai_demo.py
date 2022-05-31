@@ -18,6 +18,7 @@ tf.config.set_visible_devices([], 'GPU')
 
 def simpleCNN(n_filters=9):
     inputs = Input(shape=(3, 3, 2))
+    initializer = tf.keras.initializers.RandomNormal(mean=0., stddev=1.)
 
     x = Conv2D(filters=n_filters, kernel_size=3, padding='same', strides=(1, 1))(inputs)
     x = BatchNormalization()(x)
@@ -37,10 +38,10 @@ def simpleCNN(n_filters=9):
 
     x = GlobalAveragePooling2D()(x)
 
-    x = Dense(512)(x)
+    x = Dense(512, kernel_initializer=initializer)(x)
 
-    policy = Dense(9, activation='softmax')(x)
-    value = Dense(1, activation='tanh')(x)
+    policy = Dense(9, activation='softmax', kernel_initializer=initializer)(x)
+    value = Dense(1, activation='tanh', kernel_initializer=initializer)(x)
 
     outputs = policy, value
     model = Model(inputs=inputs, outputs=outputs, name='Oscar', )
@@ -112,7 +113,7 @@ def train_episode():
         step_count += 1
 
         # todo return policy vector for learning
-        selected_action = mcts.search(observation, 50)
+        selected_action = mcts.search(observation, 100)
 
         # todo hide away because game specific
         selected = np.unravel_index(selected_action, observation[0].shape)
@@ -149,7 +150,7 @@ def learn(n_iter=100, queue_length=10):
         m.fit(x=t_boards, y=[t_actions, t_values], verbose=0)
 
 
-learn(30)
+learn(66)
 
 env.render()
 env.close()
