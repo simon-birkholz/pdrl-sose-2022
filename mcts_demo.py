@@ -170,7 +170,7 @@ class Node:
         :return: tuple of (a,node) where a is the action represented by the node
         """
         selected = None
-        max_ucb = float('-inf')
+        max_ucb = -float('inf')
         for action, child in self.children.items():
             ucb = child.upper_confidence_bound()
             if ucb > max_ucb:
