@@ -13,8 +13,9 @@ from tensorflow.keras.layers import Conv2D, ReLU, Add, BatchNormalization, Globa
 
 from mcts import MonteCarloTreeSearch
 from tqdm import tqdm
+from baselines import RandomPlayer
 
-#tf.config.set_visible_devices([], 'GPU')
+tf.config.set_visible_devices([], 'GPU')
 
 
 def simpleCNN(n_filters=9):
@@ -97,6 +98,9 @@ print('action space = {}'.format(env.action_space))
 
 m = simpleCNN(64)
 
+fallback_counter = 0
+
+fallback_agent = RandomPlayer(env)
 
 def train_episode():
     """
@@ -116,6 +120,12 @@ def train_episode():
         # todo return policy vector for learning
         selected_action = mcts.search(observation, 100)
 
+        if not selected_action > 0:
+            # mcts hasn't return valid value, use random baseline as fallback and report warning
+            selected_action = fallback_agent.get_action(observation)
+            fallback_counter += 1
+            print("Warning: Using fallback agent to sample random move")
+            
         # todo hide away because game specific
         selected = np.unravel_index(selected_action, observation[0].shape)
 
@@ -163,3 +173,4 @@ if __name__ == '__main__':
 
     learn(args.iterations,args.queue_size)
     m.save(args.out)
+    print("Used ", fallback_counter, " fallback moves")
