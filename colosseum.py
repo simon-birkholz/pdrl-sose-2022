@@ -6,7 +6,7 @@ import gym
 import boardgame2
 import numpy as np
 
-from mcts_demo import MonteCarloTreeSearch
+from mcts import MonteCarloTreeSearch
 from tqdm import tqdm
 from baselines import RandomPlayer
 
@@ -47,9 +47,9 @@ def expand_action(action):
 
 
 class AiPlayer:
-    def __init__(self,game):
+    def __init__(self,game,m_name):
         self.game = game
-        self.model = keras.models.load_model('first-tic-tac-toe-agent')
+        self.model = keras.models.load_model(m_name)
         self.mcts = MonteCarloTreeSearch(self.game,self.model)
         self.sim_count = 50
 
@@ -106,9 +106,9 @@ class Colosseum:
 if __name__ == "__main__":
     env = gym.make('TicTacToe-v0')
     randomPlayer = RandomPlayer(env)
-    ai_player = AiPlayer(env)
+    ai_player = AiPlayer(env,'longer_test')
 
     colosseum = Colosseum(env,randomPlayer,ai_player)
 
-    rWins, aiWins, draws = colosseum.fight(25)
+    rWins, aiWins, draws = colosseum.fight(50)
     print(f" Ai won {aiWins} games with {draws} draws")

@@ -4,7 +4,7 @@ import gym
 import boardgame2
 import numpy as np
 
-from mcts_demo import MonteCarloTreeSearch
+from mcts import MonteCarloTreeSearch
 from tqdm import tqdm
 
 tf.config.set_visible_devices([], 'GPU')
@@ -43,7 +43,7 @@ def expand_action(action):
     return v
 
 
-m = keras.models.load_model('first-tic-tac-toe-agent')
+m = keras.models.load_model('longer_test')
 env = gym.make('TicTacToe-v0')
 mcts = MonteCarloTreeSearch(env, m)
 
