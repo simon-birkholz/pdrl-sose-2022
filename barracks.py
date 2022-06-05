@@ -15,8 +15,21 @@ from mcts import MonteCarloTreeSearch
 from tqdm import tqdm
 from baselines import RandomPlayer
 
-tf.config.set_visible_devices([], 'GPU')
+#tf.config.set_visible_devices([], 'GPU')
+# use only first GPU
+#physical_devices = tf.config.list_physical_devices('GPU')
+#tf.config.set_visible_devices(physical_devices[:1], 'GPU')
+gpus = tf.config.list_physical_devices('GPU')
+tpus = tf.config.list_physical_devices('TPU')
 
+print(f'Found {len(gpus)} GPUs ')
+for gpu in gpus:
+    print(gpu)
+print(f'Found {len(tpus)} TPUs ')
+
+#config = tf.ConfigProto()
+#config.gpu_options.allow_growth = True
+#sess = tf.Session(config=config)
 
 def simpleCNN(n_filters=9):
     inputs = Input(shape=(3, 3, 2))
@@ -98,8 +111,6 @@ print('action space = {}'.format(env.action_space))
 
 m = simpleCNN(64)
 
-fallback_counter = 0
-
 fallback_agent = RandomPlayer(env)
 
 def train_episode():
@@ -123,7 +134,6 @@ def train_episode():
         if not selected_action > 0:
             # mcts hasn't return valid value, use random baseline as fallback and report warning
             selected_action = fallback_agent.get_action(observation)
-            fallback_counter += 1
             print("Warning: Using fallback agent to sample random move")
             
         # todo hide away because game specific
@@ -173,4 +183,4 @@ if __name__ == '__main__':
 
     learn(args.iterations,args.queue_size)
     m.save(args.out)
-    print("Used ", fallback_counter, " fallback moves")
+    #print("Used ", fallback_counter, " fallback moves")
