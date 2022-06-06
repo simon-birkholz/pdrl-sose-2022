@@ -9,52 +9,9 @@ import numpy as np
 from mcts import MonteCarloTreeSearch
 from tqdm import tqdm
 from baselines import RandomPlayer
+from ai_player import AiPlayer
 
 tf.config.set_visible_devices([], 'GPU')
-
-def transform_state(observation):
-    board, player = observation
-    res = np.zeros((3, 3, 2))
-    nBoard = np.array(board * player)
-    f1 = nBoard == 1
-    f2 = nBoard == -1
-    res[:, :, 0] = f1
-    res[:, :, 1] = f2
-    return np.asarray(res)
-
-
-def get_board(observation):
-    board, _ = observation
-    res = np.zeros((3, 3, 2))
-    f1 = board == 1
-    f2 = board == -1
-    res[:, :, 0] = f1
-    res[:, :, 1] = f2
-    return np.asarray(res)
-
-
-def flip_colors(board):
-    res = np.zeros((3, 3, 2))
-    res[:, :, 0] = board[:, :, 1]
-    res[:, :, 1] = board[:, :, 0]
-    return res
-
-
-def expand_action(action):
-    v = np.zeros(9)
-    v[action] = 1
-    return v
-
-
-class AiPlayer:
-    def __init__(self,game,m_name):
-        self.game = game
-        self.model = keras.models.load_model(m_name)
-        self.mcts = MonteCarloTreeSearch(self.game,self.model)
-        self.sim_count = 50
-
-    def get_action(self,obs):
-        return self.mcts.search(obs,n_sim=self.sim_count)
 
 
 class Colosseum:

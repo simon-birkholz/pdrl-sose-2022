@@ -1,40 +1,5 @@
 import numpy as np
 
-
-def transform_state(observation):
-    board, player = observation
-    res = np.zeros((3, 3, 2))
-    nBoard = np.array(board * player)
-    f1 = nBoard == 1
-    f2 = nBoard == -1
-    res[:, :, 0] = f1
-    res[:, :, 1] = f2
-    return np.asarray(res)
-
-
-def get_board(observation):
-    board, _ = observation
-    res = np.zeros((3, 3, 2))
-    f1 = board == 1
-    f2 = board == -1
-    res[:, :, 0] = f1
-    res[:, :, 1] = f2
-    return np.asarray(res)
-
-
-def flip_colors(board):
-    res = np.zeros((3, 3, 2))
-    res[:, :, 0] = board[:, :, 1]
-    res[:, :, 1] = board[:, :, 0]
-    return res
-
-
-def expand_action(action):
-    v = np.zeros(9)
-    v[action] = 1
-    return v
-
-
 def normalize_pd(pd):
     whole = sum(pd)
     new_pd = np.zeros(len(pd))
@@ -59,22 +24,13 @@ class MonteCarloTreeSearch:
         Performs the mcts for the current move
         :return:
         """
-        tObs = transform_state(current_state)
+        tObs = self.game.to_nn_view(current_state)
 
         # if self.head is None:
         # Init initial node
         policy, value = self.model.predict(np.array([tObs]), verbose=0)
 
-        valid = self.game.get_valid(current_state)
-
-        # todo write better wrapper class to hide the concrete shape of the policy
-        policy = policy[0].reshape((3, 3))
-
-        # give invalid move a probability of zero
-        policy[valid == 0] = 0
-
-        # transform back todo also hide this
-        policy = policy.flatten()
+        policy = self.game.correct_policy(policy,current_state)
 
         policy = normalize_pd(policy)
 
@@ -203,16 +159,11 @@ class Node:
                 s_a = np.unravel_index(action, self.state[0].shape)
 
                 child_state, v, done, _ = self.mcts.game.next_step(self.state, s_a)
-                tChildState = transform_state(child_state)
+                tChildState = self.mcts.game.to_nn_view(child_state)
 
                 child_policy, child_value = self.mcts.model.predict(np.array([tChildState]), verbose=0)
 
-                valid = self.mcts.game.get_valid(child_state)
-
-                # todo hide this details away (because game specific)
-                child_policy = child_policy[0].reshape((3, 3))
-                child_policy[valid == 0] = 0
-                child_policy = child_policy.flatten()
+                child_policy = self.mcts.game.correct_policy(child_policy,child_state)
 
                 child_policy = normalize_pd(child_policy)
 

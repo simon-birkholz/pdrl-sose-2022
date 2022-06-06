@@ -6,61 +6,13 @@ import numpy as np
 
 from mcts import MonteCarloTreeSearch
 from tqdm import tqdm
+from games.kinarow import TicTacToe
+from ai_player import AiPlayer
 
 tf.config.set_visible_devices([], 'GPU')
 
-def transform_state(observation):
-    board, player = observation
-    res = np.zeros((3, 3, 2))
-    nBoard = np.array(board * player)
-    f1 = nBoard == 1
-    f2 = nBoard == -1
-    res[:, :, 0] = f1
-    res[:, :, 1] = f2
-    return np.asarray(res)
-
-
-def get_board(observation):
-    board, _ = observation
-    res = np.zeros((3, 3, 2))
-    f1 = board == 1
-    f2 = board == -1
-    res[:, :, 0] = f1
-    res[:, :, 1] = f2
-    return np.asarray(res)
-
-
-def flip_colors(board):
-    res = np.zeros((3, 3, 2))
-    res[:, :, 0] = board[:, :, 1]
-    res[:, :, 1] = board[:, :, 0]
-    return res
-
-
-def expand_action(action):
-    v = np.zeros(9)
-    v[action] = 1
-    return v
-
-
-m = keras.models.load_model('longer_test')
-env = gym.make('TicTacToe-v0')
-mcts = MonteCarloTreeSearch(env, m)
-
-def get_ai_move(model, obs):
-    tObs = transform_state(obs)
-    policy, value = model.predict(np.array([tObs]), verbose=0)
-
-    valid = env.get_valid(obs)
-    policy = policy[0].reshape((3, 3))
-
-    # give invalid move a probability of zero
-    policy[valid == 0] = 0
-
-    policy = policy.flatten()
-
-    return policy.argmax()
-
+env = TicTacToe()
+agent = AiPlayer(env,'first-tic-tac-toe-agent',100)
 
 # play against a simple ai agent
 observation = env.reset()
@@ -75,7 +27,7 @@ while True:
         selected_action = int(input("Enter your move: "))-1
     else:
         #selected_action = get_ai_move(m, observation)
-        selected_action = mcts.search(observation,100)
+        selected_action = agent.get_action(observation)
 
     selected = np.unravel_index(selected_action, observation[0].shape)
 

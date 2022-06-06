@@ -14,6 +14,7 @@ from tensorflow.keras.layers import Conv2D, ReLU, Add, BatchNormalization, Globa
 from mcts import MonteCarloTreeSearch
 from tqdm import tqdm
 from baselines import RandomPlayer
+from games.kinarow import TicTacToe
 
 #tf.config.set_visible_devices([], 'GPU')
 # use only first GPU
@@ -66,50 +67,14 @@ def simpleCNN(n_filters=9):
 
     return model
 
-
-def transform_state(observation):
-    board, player = observation
-    res = np.zeros((3, 3, 2))
-    nBoard = np.array(board * player)
-    f1 = nBoard == 1
-    f2 = nBoard == -1
-    res[:, :, 0] = f1
-    res[:, :, 1] = f2
-    return np.asarray(res)
-
-
-def get_board(observation):
-    board, _ = observation
-    res = np.zeros((3, 3, 2))
-    f1 = board == 1
-    f2 = board == -1
-    res[:, :, 0] = f1
-    res[:, :, 1] = f2
-    return np.asarray(res)
-
-
-def flip_colors(board):
-    res = np.zeros((3, 3, 2))
-    res[:, :, 0] = board[:, :, 1]
-    res[:, :, 1] = board[:, :, 0]
-    return res
-
-
 def expand_action(action):
     v = np.zeros(9)
     v[action] = 1
     return v
 
-
-t = transform_state(([[1, -1, 1], [1, -1, 1], [1, -1, 1]], 1))
-print(t)
-
-env = gym.make('TicTacToe-v0')
-
-print('observation space = {}'.format(env.observation_space))
-print('action space = {}'.format(env.action_space))
-
 m = simpleCNN(64)
+
+env = TicTacToe()
 
 fallback_agent = RandomPlayer(env)
 
@@ -145,7 +110,7 @@ def train_episode():
         if done:
             #print("Done with game. Outcome: ", reward)
 
-            return [(transform_state(x[0]), x[1], (-1) ** (x[0][1] != reward)) for x in observations]
+            return [(env.to_nn_view(x[0]), x[1], (-1) ** (x[0][1] != reward)) for x in observations]
 
 
 def learn(n_iter=100, queue_length=10):
