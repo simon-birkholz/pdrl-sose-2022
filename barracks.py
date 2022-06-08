@@ -9,7 +9,6 @@ import argparse
 import numpy as np
 from sklearn.utils import shuffle
 
-
 import tensorflow as tf
 from keras.models import *
 from keras.layers import *
@@ -24,7 +23,7 @@ from games.kinarow import TicTacToe
 from multiprocessing import Pool
 import threading
 
-# tf.config.set_visible_devices([], 'GPU')
+tf.config.set_visible_devices([], 'GPU')
 # use only first GPU
 # physical_devices = tf.config.list_physical_devices('GPU')
 # tf.config.set_visible_devices(physical_devices[:1], 'GPU')
@@ -42,7 +41,6 @@ print(f'Found {len(tpus)} TPUs ')
 # sess = tf.Session(config=config)
 
 def simpleCNN(n_filters=9):
-
     inputs = Input(batch_shape=(None, 3, 3, 2))
     initializer = tf.keras.initializers.RandomNormal(mean=0., stddev=1.)
 
@@ -73,100 +71,97 @@ def simpleCNN(n_filters=9):
     model = Model(inputs=inputs, outputs=outputs, name='Oscar', )
     model.summary()
 
-    #model.compile(optimizer='adam', loss=['categorical_crossentropy', 'mean_squared_error'])
+    # model.compile(optimizer='adam', loss=['categorical_crossentropy', 'mean_squared_error'])
     model.make_predict_function()
 
     return model
+
 
 def expand_action(action):
     v = np.zeros(9)
     v[action] = 1
     return v
 
-m = simpleCNN(64)
 
-def train_episode():
-    """
-    Executes one episode of the self-play algorithm
-    :return:
-    """
-    global m
-    env = TicTacToe()
-    fallback_agent = RandomPlayer(env)
+class Worker(threading.Thread):
+    global_episode = 0
+    pBar = tqdm()
+    save_lock = threading.Lock()
 
-    observations = []
-    observation = env.reset()
-    mcts = MonteCarloTreeSearch(env, m)
+    def __init__(self, total_episodes, mcts_sims, global_model, result_queue):
+        super(Worker, self).__init__()
+        self.result_queue = result_queue
+        self.global_model = global_model
+        self.local_model = simpleCNN(32)
+        self.env = TicTacToe()
+        self.fallback_agent = RandomPlayer(self.env)
+        self.total_episodes = total_episodes
+        self.mcts_sims = mcts_sims
+        self.opt = tf.keras.optimizers.Adam()
 
-    step_count = 0
-    while True:
-        # env.render()
-        # print("\n")
-        step_count += 1
+    def compute_loss(self,
+                     exp):
+        policies, values = self.local_model([exp[0]])
 
-        # todo return policy vector for learning
-        selected_action = mcts.search(observation, 100)
+        loss_policy = tf.keras.losses.categorical_crossentropy(policies, exp[1])
+        loss_value = tf.keras.losses.MSE(values, exp[2])
+        total_loss = tf.reduce_mean(loss_policy + loss_value)
+        return total_loss
 
-        if not selected_action > 0:
-            # mcts hasn't return valid value, use random baseline as fallback and report warning
-            selected_action = fallback_agent.get_action(observation)
-            print("Warning: Using fallback agent to sample random move")
+    def run(self):
 
-        # todo hide away because game specific
-        selected = np.unravel_index(selected_action, observation[0].shape)
+        while Worker.global_episode < self.total_episodes:
+            observation = self.env.reset()
+            observations = []
+            mcts = MonteCarloTreeSearch(self.env, self.local_model)
+            step_count = 0
+            while True:
+                step_count += 1
+                # todo return policy vector for learning
+                selected_action = mcts.search(observation, self.mcts_sims)
+                if not selected_action > 0:
+                    # mcts hasn't return valid value, use random baseline as fallback and report warning
+                    selected_action = self.fallback_agent.get_action(observation)
+                    print("Warning: Using fallback agent to sample random move")
 
-        observations.append([observation, selected_action, None])
+                # todo hide away because game specific
+                selected = np.unravel_index(selected_action, observation[0].shape)
+                observations.append([observation, selected_action, None])
+                observation, reward, done, info = self.env.step(selected)
+                if done:
+                    experience = [(self.env.to_nn_view(x[0]), expand_action(x[1]), (-1) ** (x[0][1] != reward)) for x in
+                                  observations]
+                    with tf.GradientTape() as tape:
+                        total_loss = self.compute_loss(experience)
+                    # Calculate local gradients
+                    grads = tape.gradient(total_loss, self.local_model.trainable_weights)
+                    # Push local gradients to global model
+                    self.opt.apply_gradients(zip(grads, self.global_model.trainable_weights))
+                    # Update local model with new weights
+                    self.local_model.set_weights(self.global_model.get_weights())
+                    Worker.global_episode += 1
+                    Worker.pBar.update(1)
+                    break
 
-        observation, reward, done, info = env.step(selected)
-        if done:
-            # print("Done with game. Outcome: ", reward)
 
-            return [(env.to_nn_view(x[0]), x[1], (-1) ** (x[0][1] != reward)) for x in observations]
-
-
-def learn_episode(idx):
-    global m
-    print(m)
-    examples = train_episode()
-
-    train_board = np.array([x[0] for x in examples])
-    train_actions = np.array([expand_action(x[1]) for x in examples])
-    train_values = np.array([x[2] for x in examples])
-
-    return train_board, train_actions, train_values
-
-def learn(n_iter=100, queue_length=10, threads=1):
+def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
     history_train_examples = deque([], maxlen=queue_length)
-
-    opts = [Optimizer() for i in range(1)]
-
+    global_model = simpleCNN(32)
     pool = Pool(threads)
-    for data in tqdm(pool.imap(learn_episode,range(0,n_iter)),total=n_iter):
-        history_train_examples.append(data)
 
-        t_boards = list()
-        t_actions = list()
-        t_values = list()
-        for b, a, v in history_train_examples:
-            t_boards += b.tolist()
-            t_actions += a.tolist()
-            t_values += v.tolist()
-        t_boards, t_actions, t_values = shuffle(np.array(t_boards), np.array(t_actions), np.array(t_values))
+    Worker.pBar = tqdm(total=n_iter)
 
-        m.fit_push(t_boards,t_actions, t_values)
+    workers = [Worker(n_iter,
+                      100,
+                      global_model,
+                      history_train_examples) for i in range(threads)]
 
+    for i, worker in enumerate(workers):
+        worker.start()
 
+    [w.join() for w in workers]
 
-
-    pool.close()
-    pool.join()
-
-    for o in opts:
-        o.stop()
-    for o in opts:
-        o.join()
-
-
+    global_model.save(save_dir)
 
 
 if __name__ == '__main__':
@@ -180,6 +175,4 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    learn(args.iterations, args.queue_size, args.threads)
-    m.save(args.out)
-    # print("Used ", fallback_counter, " fallback moves")
+    learn(args.iterations, args.queue_size, args.threads, args.out)
