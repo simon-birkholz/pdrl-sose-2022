@@ -34,11 +34,12 @@ def flip_colors(board):
 
 class TicTacToe(Game):
 
-    def __init__(self):
+    def __init__(self,silent=True):
         self.env = gym.make('TicTacToe-v0')
 
-        print('observation space = {}'.format(self.env.observation_space))
-        print('action space = {}'.format(self.env.action_space))
+        if not silent:
+            print('observation space = {}'.format(self.env.observation_space))
+            print('action space = {}'.format(self.env.action_space))
 
     def reset(self):
         return self.env.reset()
