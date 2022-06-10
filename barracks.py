@@ -101,10 +101,11 @@ class Worker(threading.Thread):
 
     def compute_loss(self,
                      exp):
-        policies, values = self.local_model([exp[0]])
+        boards, actions, vals = zip(*exp)
+        policies, values = self.local_model(np.array(boards))
 
-        loss_policy = tf.keras.losses.categorical_crossentropy(policies, exp[1])
-        loss_value = tf.keras.losses.MSE(values, exp[2])
+        loss_policy = tf.keras.losses.categorical_crossentropy(policies, np.array(actions))
+        loss_value = tf.keras.losses.MSE(values, np.array(vals).astype(float))
         total_loss = tf.reduce_mean(loss_policy + loss_value)
         return total_loss
 
