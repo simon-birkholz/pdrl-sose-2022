@@ -9,6 +9,7 @@ from mcts import MonteCarloTreeSearch
 from tqdm import tqdm
 from baselines import RandomPlayer
 from ai_player import AiPlayer
+from games.kinarow import  TicTacToe
 
 tf.config.set_visible_devices([], 'GPU')
 
@@ -59,7 +60,7 @@ class Colosseum:
 
 
 if __name__ == "__main__":
-    env = gym.make('TicTacToe-v0')
+    env = TicTacToe()
     randomPlayer = RandomPlayer(env)
     ai_player = AiPlayer(env, 'longer_test')
 

@@ -20,6 +20,8 @@ from tqdm import tqdm
 from baselines import RandomPlayer
 from games.kinarow import TicTacToe
 
+from colosseum import Colosseum
+
 from multiprocessing import Pool
 import threading
 
@@ -71,7 +73,7 @@ def simpleCNN(n_filters=9):
     model = Model(inputs=inputs, outputs=outputs, name='Oscar', )
     model.summary()
 
-    # model.compile(optimizer='adam', loss=['categorical_crossentropy', 'mean_squared_error'])
+    model.compile(optimizer='adam', loss=['categorical_crossentropy', 'mean_squared_error'])
     model.make_predict_function()
 
     return model
@@ -93,11 +95,14 @@ class Worker(threading.Thread):
         self.result_queue = result_queue
         self.global_model = global_model
         self.local_model = simpleCNN(32)
+        self.local_model.set_weights(self.global_model.get_weights())
         self.env = TicTacToe()
         self.fallback_agent = RandomPlayer(self.env)
         self.total_episodes = total_episodes
         self.mcts_sims = mcts_sims
         self.opt = tf.keras.optimizers.Adam()
+        self.do_update = False
+        self.experience = []
 
     def compute_loss(self,
                      exp):
@@ -130,37 +135,67 @@ class Worker(threading.Thread):
                 observations.append([observation, selected_action, None])
                 observation, reward, done, info = self.env.step(selected)
                 if done:
-                    experience = [(self.env.to_nn_view(x[0]), expand_action(x[1]), (-1) ** (x[0][1] != reward)) for x in
+                    exp= [(self.env.to_nn_view(x[0]), expand_action(x[1]), (-1) ** (x[0][1] != reward)) for x in
                                   observations]
-                    with tf.GradientTape() as tape:
-                        total_loss = self.compute_loss(experience)
-                    # Calculate local gradients
-                    grads = tape.gradient(total_loss, self.local_model.trainable_weights)
-                    # Push local gradients to global model
-                    self.opt.apply_gradients(zip(grads, self.global_model.trainable_weights))
-                    # Update local model with new weights
-                    self.local_model.set_weights(self.global_model.get_weights())
+                    self.experience.append(exp)
+                    if self.do_update:
+                        with tf.GradientTape() as tape:
+                            total_loss = self.compute_loss(exp)
+                        # Calculate local gradients
+                        grads = tape.gradient(total_loss, self.local_model.trainable_weights)
+                        # Push local gradients to global model
+                        self.opt.apply_gradients(zip(grads, self.global_model.trainable_weights))
+                        # Update local model with new weights
+                        self.local_model.set_weights(self.global_model.get_weights())
+
                     Worker.global_episode += 1
                     Worker.pBar.update(1)
+                    # :/ sneaky bastard
                     break
 
 
 def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
     history_train_examples = deque([], maxlen=queue_length)
     global_model = simpleCNN(32)
-    pool = Pool(threads)
 
     Worker.pBar = tqdm(total=n_iter)
 
-    workers = [Worker(n_iter,
+    global_eps = int(n_iter / 100)
+
+    for i in range(0,global_eps):
+
+        Worker.global_episode = 0
+        workers = [Worker(100,
                       100,
                       global_model,
                       history_train_examples) for i in range(threads)]
 
-    for i, worker in enumerate(workers):
-        worker.start()
+        for _, worker in enumerate(workers):
+            worker.start()
 
-    [w.join() for w in workers]
+        [w.join() for w in workers]
+        all_exp = [w.experience for w in workers]
+        all_exp = [x for xs in all_exp for x in xs]
+
+        t_boards, t_actions, t_values = zip(*all_exp)
+        t_boards, t_actions, t_values = shuffle(np.array(t_boards), np.array(t_actions), np.array(t_values))
+
+        model_candidate = clone_model(global_model)
+
+        model_candidate.fit(x=t_boards, y=[t_actions, t_values], verbose=0)
+
+        c = Colosseum(TicTacToe(),model_candidate,global_model)
+        print("Now Duel models to find out if better")
+        n_wins, g_wins,draws = c.fight(32)
+        print(f"New model won {n_wins} games, old model won {g_wins} games.")
+        if n_wins > 16:
+            print("Adapting weights")
+            # adapt new model weights
+            global_model.set_weights(model_candidate.get_weights())
+            try:
+                global_model.save(save_dir)
+            except:
+                print("Error on saving new model")
 
     global_model.save(save_dir)
 

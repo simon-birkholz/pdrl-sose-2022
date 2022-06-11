@@ -14,6 +14,10 @@ An implementation for the AlphaZero Algorihm.
 - [ ] A (web) visualization which shows the current state of the game, as well as current policy and value estimation
 - [ ] A distributed version of the monte-carlo as described in the papers
 
+## Known Issues
+
+- Ai agents often returns invalid move, and a random baseline has to be used as fallback
+
 ## Literature
 
 ```bibtex
