@@ -8,7 +8,10 @@ from baselines import RandomPlayer
 class AiPlayer:
     def __init__(self,game,m_name,sim_count=50):
         self.game = game
-        self.model = keras.models.load_model(m_name)
+        if m_name is str:
+            self.model = keras.models.load_model(m_name)
+        else:
+            self.model = m_name
         self.mcts = MonteCarloTreeSearch(self.game,self.model)
         self.sim_count = sim_count
         self.fallback_agent = RandomPlayer(game)

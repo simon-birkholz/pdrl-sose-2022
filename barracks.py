@@ -21,11 +21,12 @@ from baselines import RandomPlayer
 from games.kinarow import TicTacToe
 
 from colosseum import Colosseum
+from ai_player import AiPlayer
 
 from multiprocessing import Pool
 import threading
 
-tf.config.set_visible_devices([], 'GPU')
+# tf.config.set_visible_devices([], 'GPU')
 # use only first GPU
 # physical_devices = tf.config.list_physical_devices('GPU')
 # tf.config.set_visible_devices(physical_devices[:1], 'GPU')
@@ -135,8 +136,8 @@ class Worker(threading.Thread):
                 observations.append([observation, selected_action, None])
                 observation, reward, done, info = self.env.step(selected)
                 if done:
-                    exp= [(self.env.to_nn_view(x[0]), expand_action(x[1]), (-1) ** (x[0][1] != reward)) for x in
-                                  observations]
+                    exp = [(self.env.to_nn_view(x[0]), expand_action(x[1]), (-1) ** (x[0][1] != reward)) for x in
+                           observations]
                     self.experience.append(exp)
                     if self.do_update:
                         with tf.GradientTape() as tape:
@@ -162,13 +163,13 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
 
     global_eps = int(n_iter / 100)
 
-    for i in range(0,global_eps):
+    for i in range(0, global_eps):
 
         Worker.global_episode = 0
-        workers = [Worker(100,
-                      100,
-                      global_model,
-                      history_train_examples) for i in range(threads)]
+        workers = [Worker(3,
+                          100,
+                          global_model,
+                          history_train_examples) for i in range(threads)]
 
         for _, worker in enumerate(workers):
             worker.start()
@@ -176,17 +177,21 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
         [w.join() for w in workers]
         all_exp = [w.experience for w in workers]
         all_exp = [x for xs in all_exp for x in xs]
+        all_exp = [x for xs in all_exp for x in xs]
 
         t_boards, t_actions, t_values = zip(*all_exp)
         t_boards, t_actions, t_values = shuffle(np.array(t_boards), np.array(t_actions), np.array(t_values))
 
         model_candidate = clone_model(global_model)
+        # model must be compiled
+        model_candidate.compile(optimizer='adam', loss=['categorical_crossentropy', 'mean_squared_error'])
 
         model_candidate.fit(x=t_boards, y=[t_actions, t_values], verbose=0)
 
-        c = Colosseum(TicTacToe(),model_candidate,global_model)
+        game = TicTacToe()
+        c = Colosseum(game, AiPlayer(game, model_candidate, 100), AiPlayer(game, global_model, 100))
         print("Now Duel models to find out if better")
-        n_wins, g_wins,draws = c.fight(32)
+        n_wins, g_wins, draws = c.fight(32)
         print(f"New model won {n_wins} games, old model won {g_wins} games.")
         if n_wins > 16:
             print("Adapting weights")
