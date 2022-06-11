@@ -8,7 +8,7 @@ zero::NeuralNetwork::NeuralNetwork(
 zero::NeuralNetwork::~NeuralNetwork() {}
 
 std::future<zero::NeuralNetwork::return_type>
-    zero::NeuralNetwork::evaluate(std::vector<int> canonical_state)
+    zero::NeuralNetwork::evaluate(KinaRow game)
 {
     // assume only tic tac toe for now
   return std::future<return_type>();

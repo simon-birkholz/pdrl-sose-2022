@@ -6,6 +6,7 @@
 #include <mutex>
 #include <vector>
 #include "threadpool.hpp"
+#include "kinarow.hpp"
 
 namespace zero
 {
@@ -32,7 +33,7 @@ namespace zero
     void search(SearchState game);
 
     // Executes one Simulation
-    void simulate(SearchState game);
+    void simulate(KinaRow game);
 
   private:
     unsigned n_sim_;

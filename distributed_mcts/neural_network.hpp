@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 
+#include "kinarow.hpp"
+
 namespace zero
 {
   class NeuralNetwork
@@ -25,7 +27,7 @@ namespace zero
   public:
     void set_batch_size(unsigned batch_size) { this->batch_size_ = batch_size; }
 
-    std::future<return_type> evaluate(std::vector<int> canonical_state);
+    std::future<return_type> evaluate(KinaRow game);
 
   private:
     unsigned batch_size_;

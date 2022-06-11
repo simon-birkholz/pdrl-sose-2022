@@ -8,14 +8,16 @@ ${CMAKE_CURRENT_SOURCE_DIR}/mcts.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/neural_network.hpp
 ${CMAKE_CURRENT_SOURCE_DIR}/neural_network.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/threadpool.hpp
+${CMAKE_CURRENT_SOURCE_DIR}/kinarow.hpp
+${CMAKE_CURRENT_SOURCE_DIR}/kinarow.cpp
 )
 
 set(swig_file ${CMAKE_CURRENT_SOURCE_DIR}/mcts.i)
 
 #add_library(${target_name} SHARED ${PROJECT_FILES})
-
+set_property(SOURCE ${swig_file} PROPERTY CPLUSPLUS ON)
 swig_add_library(${target_name} TYPE SHARED LANGUAGE python SOURCES ${swig_file} ${PROJECT_FILES})
 
-target_include_directories(${target_name} INTERFACE
+target_include_directories(${target_name} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
 )

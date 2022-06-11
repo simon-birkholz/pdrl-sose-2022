@@ -162,9 +162,11 @@ void zero::MonteCarloTreeSearch::search(SearchState game)
 
   for (int i = 0; i < n_sim_; i++)
   {
+    KinaRow gWrapper(3, 3, game.board, game.player);
     // lets hope this works
-    auto f = std::bind(&simulate, this, std::placeholders::_1);
-    auto future = tpool_.submit(f, game);
+    auto f =
+        std::bind(&MonteCarloTreeSearch::simulate, this, std::placeholders::_1);
+    auto future = tpool_.submit(f, gWrapper);
 
     futures.emplace_back(std::move(future));
   }
@@ -175,7 +177,7 @@ void zero::MonteCarloTreeSearch::search(SearchState game)
   }
 }
 
-void zero::MonteCarloTreeSearch::simulate(SearchState game)
+void zero::MonteCarloTreeSearch::simulate(KinaRow game)
 {
   node_ptr node = root_;
 
@@ -194,19 +196,38 @@ void zero::MonteCarloTreeSearch::simulate(SearchState game)
   }
 
   //TODO get game status
-  int status = 0;
+  int status = game.get_winner();
   double value = 0;
-  if (status == 0)
+  if (status == -1)
   {
     std::vector<double> action_priors(9, 0);
 
-    auto future = NeuralNetwork::instance().evaluate(game.board);
+    auto future = NeuralNetwork::instance().evaluate(game);
     auto result = future.get();
     action_priors = std::move(result.first);
     value = result.second;
 
-    // TODO do renormalization
-    // set invalid actions to zero prob
+
+    // set impossible moves to zero
+    std::vector<bool> possible = game.get_valid();
+    for (int i = 0; i < 9; i++)
+    {
+      if (!possible[i])
+      {
+        action_priors[i] = 0;
+      }
+    }
+
+    // probability normalization
+    double p_sum = 0;
+    for (int i = 0; i < 9; i++)
+    {
+      p_sum += action_priors[i];
+    }
+    for (int i = 0; i < 9; i++)
+    {
+       action_priors[i] /= p_sum;
+    }
 
     // TODO workaround if all actions invalid
 
@@ -214,8 +235,7 @@ void zero::MonteCarloTreeSearch::simulate(SearchState game)
   }
   else
   {
-    bool isWinner = true;
-    value = isWinner ? 1 : -1;
+    value = status * game.get_player();
   }
   node->back_propagate(-value);
 }
