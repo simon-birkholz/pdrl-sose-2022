@@ -8,7 +8,7 @@ from tqdm.keras import TqdmCallback
 def resize_and_cast(x, y):
     x = tf.cast(x, tf.float32) / 255.0
     x = tf.image.resize(x, (128, 128))
-    #x = tf.image.resize(x, (16, 16))
+    # x = tf.image.resize(x, (16, 16))
     return x, y
 
 

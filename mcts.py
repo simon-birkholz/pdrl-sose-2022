@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def normalize_pd(pd):
     whole = sum(pd)
     new_pd = np.zeros(len(pd))
@@ -30,7 +31,7 @@ class MonteCarloTreeSearch:
         # Init initial node
         policy, value = self.model.predict(np.array([tObs]), verbose=0)
 
-        policy = self.game.correct_policy(policy,current_state)
+        policy = self.game.correct_policy(policy, current_state)
 
         policy = normalize_pd(policy)
 
@@ -72,13 +73,11 @@ class Node:
     def __str__(self):
         return f"Node: V: {self.V} Exp: {len(self.children) > 0} T: {self.is_terminal_state()}"
 
-
-
-    def print_node(self, a, p_a = 0, q_a = 0, n_a = 0, depth=0):
-        node_str =  f"Node: P: {p_a} Q: {q_a} N: {n_a} V: {self.V} Exp: {len(self.children) > 0} T: {self.is_terminal_state()}"
+    def print_node(self, a, p_a=0, q_a=0, n_a=0, depth=0):
+        node_str = f"Node: P: {p_a} Q: {q_a} N: {n_a} V: {self.V} Exp: {len(self.children) > 0} T: {self.is_terminal_state()}"
         print('\t' * depth + str(a) + ' ' + node_str)
         for a_c, c in self.children.items():
-            c.print_node(a_c,self.P[a_c], self.Q.get(a_c), self.N.get(a_c), depth + 1)
+            c.print_node(a_c, self.P[a_c], self.Q.get(a_c), self.N.get(a_c), depth + 1)
 
     def upper_confidence_bound(self, action):
         """
@@ -163,7 +162,7 @@ class Node:
 
                 child_policy, child_value = self.mcts.model.predict(np.array([tChildState]), verbose=0)
 
-                child_policy = self.mcts.game.correct_policy(child_policy,child_state)
+                child_policy = self.mcts.game.correct_policy(child_policy, child_state)
 
                 child_policy = normalize_pd(child_policy)
 

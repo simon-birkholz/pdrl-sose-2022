@@ -6,22 +6,20 @@ from torchvision.transforms import ToTensor
 
 from mcts_demo import Node
 
+
 class ResNet(nn.Module):
     def __init__(self):
-        super(ResNet,self).__init__()
+        super(ResNet, self).__init__()
 
         self.n_filters = 16
 
         self.res_block == nn.Sequential(
-            nn.Conv2d(self.n_filters, self.n_filters,3,padding='zeros',stride=(1,1)),
+            nn.Conv2d(self.n_filters, self.n_filters, 3, padding='zeros', stride=(1, 1)),
             nn.BatchNorm2d(),
             nn.ReLU(),
 
-            nn.Conv2d(self.n_filters,self.n_filters,padding='zeros', stride=(1,1))
+            nn.Conv2d(self.n_filters, self.n_filters, padding='zeros', stride=(1, 1))
         )
-
-
-
 
     def forward(self, x):
         x = self.flatten(x)

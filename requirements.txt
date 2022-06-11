@@ -5,3 +5,4 @@ tqdm
 gym
 boardgame2
 scikit-learn
+numpy

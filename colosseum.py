@@ -1,4 +1,3 @@
-
 from random import randrange
 from tensorflow import keras
 import tensorflow as tf
@@ -20,13 +19,12 @@ class Colosseum:
         self.player1 = player1
         self.player2 = player2
 
-
-    def fight(self,game_count = 100):
+    def fight(self, game_count=100):
         p1_winCount = 0
         p2_winCount = 0
         drawCount = 0
 
-        for i in tqdm(range(0,game_count)):
+        for i in tqdm(range(0, game_count)):
             observation = self.game.reset()
             step_count = 0
             sPlayer = randrange(2)
@@ -63,9 +61,9 @@ class Colosseum:
 if __name__ == "__main__":
     env = gym.make('TicTacToe-v0')
     randomPlayer = RandomPlayer(env)
-    ai_player = AiPlayer(env,'longer_test')
+    ai_player = AiPlayer(env, 'longer_test')
 
-    colosseum = Colosseum(env,randomPlayer,ai_player)
+    colosseum = Colosseum(env, randomPlayer, ai_player)
 
     rWins, aiWins, draws = colosseum.fight(50)
     print(f" Ai won {aiWins} games with {draws} draws")
