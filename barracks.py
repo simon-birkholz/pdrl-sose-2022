@@ -9,8 +9,10 @@ import argparse
 import numpy as np
 from sklearn.utils import shuffle
 
-from swig.distributed_mcts import MonteCarloTreeSearch
-from swig.distributed_mcts import NeuralNetwork
+#from swig.distributed_mcts import MonteCarloTreeSearch
+#from swig.distributed_mcts import NeuralNetwork
+
+from mcts import MonteCarloTreeSearch
 
 from tqdm import tqdm
 from baselines import RandomPlayer
@@ -47,7 +49,7 @@ class Worker(threading.Thread):
         super(Worker, self).__init__()
         self.result_queue = result_queue
         self.global_model = global_model
-        self.local_model = NeuralNetwork('./training/checkpoint',True,10)
+        #self.local_model = NeuralNetwork('./training/checkpoint',True,10)
         self.env = TicTacToe()
         self.fallback_agent = RandomPlayer(self.env)
         self.total_episodes = total_episodes
@@ -59,12 +61,13 @@ class Worker(threading.Thread):
         while Worker.global_episode < self.total_episodes:
             observation = self.env.reset()
             observations = []
-            mcts = MonteCarloTreeSearch(self.local_model, self.mcts_sims)
+            #mcts = MonteCarloTreeSearch(self.local_model, self.mcts_sims)
+            mcts = MonteCarloTreeSearch(self.env, self.global_model)
             step_count = 0
             while True:
                 step_count += 1
                 # todo return policy vector for learning
-                selected_action = mcts.search()
+                selected_action = mcts.search(observation,self.mcts_sims)
                 if not selected_action > 0:
                     # mcts hasn't return valid value, use random baseline as fallback and report warning
                     selected_action = self.fallback_agent.get_action(observation)
@@ -87,7 +90,7 @@ class Worker(threading.Thread):
 
 def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
     history_train_examples = deque([], maxlen=queue_length)
-    global_model = NetworkWrapper(**HYPER_PARAMS)
+    global_model = NetworkWrapper(HYPER_PARAMS['lr'],HYPER_PARAMS['l2'], HYPER_PARAMS['n_layers'], HYPER_PARAMS['n_channels'])
     global_model.save_model('training', 'checkpoint')
 
     Worker.pBar = tqdm(total=n_iter)
@@ -118,10 +121,9 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
         model_candidate = NetworkWrapper(**HYPER_PARAMS)
         model_candidate.load_model('training','checkpoint')
 
-        # model must be compiled
-        model_candidate.compile(optimizer='adam', loss=['categorical_crossentropy', 'mean_squared_error'])
 
-        model_candidate.fit(x=t_boards, y=[t_actions, t_values], verbose=0)
+
+        model_candidate.train(all_exp, 10)
 
         game = TicTacToe()
         c = Colosseum(game, AiPlayer(game, model_candidate, 100), AiPlayer(game, global_model, 100))

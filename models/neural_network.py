@@ -90,7 +90,7 @@ class NetworkWrapper():
         self.train_use_gpu = train_use_gpu
         self.libtorch_use_gpu = libtorch_use_gpu
 
-        self.neural_network = ConvolutionNetwork()
+        self.neural_network = ConvolutionNetwork(self.num_layers,self.num_channels,self.n,self.n ** 2)
         if self.train_use_gpu:
             self.neural_network.cuda()
 
