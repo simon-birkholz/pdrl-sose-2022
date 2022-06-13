@@ -7,6 +7,7 @@ from torch.optim import Adam
 from torch.autograd import Variable
 import torch.nn.functional as F
 
+
 import numpy as np
 
 
@@ -77,10 +78,10 @@ class AlphaZeroLoss(nn.Module):
 
 class NetworkWrapper():
 
-    def __init__(self, lr, l2, num_layers, num_channels, train_use_gpu=True, libtorch_use_gpu=True):
+    def __init__(self, lr, l2, n_layers, n_channels, train_use_gpu=True, libtorch_use_gpu=True):
 
-        self.num_channels = num_channels
-        self.num_layers = num_layers
+        self.num_channels = n_channels
+        self.num_layers = n_layers
 
         self.lr = lr
         self.l2 = l2

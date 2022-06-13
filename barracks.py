@@ -9,13 +9,9 @@ import argparse
 import numpy as np
 from sklearn.utils import shuffle
 
-import tensorflow as tf
-from keras.models import *
-from keras.layers import *
+from swig.distributed_mcts import MonteCarloTreeSearch
+from swig.distributed_mcts import NeuralNetwork
 
-from keras import backend as K
-
-from mcts import MonteCarloTreeSearch
 from tqdm import tqdm
 from baselines import RandomPlayer
 from games.kinarow import TicTacToe
@@ -23,61 +19,17 @@ from games.kinarow import TicTacToe
 from colosseum import Colosseum
 from ai_player import AiPlayer
 
-from multiprocessing import Pool
 import threading
 
-# tf.config.set_visible_devices([], 'GPU')
-# use only first GPU
-# physical_devices = tf.config.list_physical_devices('GPU')
-# tf.config.set_visible_devices(physical_devices[:1], 'GPU')
-gpus = tf.config.list_physical_devices('GPU')
-tpus = tf.config.list_physical_devices('TPU')
-
-print(f'Found {len(gpus)} GPUs ')
-for gpu in gpus:
-    print(gpu)
-print(f'Found {len(tpus)} TPUs ')
+from models.neural_network import NetworkWrapper
 
 
-# config = tf.ConfigProto()
-# config.gpu_options.allow_growth = True
-# sess = tf.Session(config=config)
-
-def simpleCNN(n_filters=9):
-    inputs = Input(batch_shape=(None, 3, 3, 2))
-    initializer = tf.keras.initializers.RandomNormal(mean=0., stddev=1.)
-
-    x = Conv2D(filters=n_filters, kernel_size=3, padding='same', strides=(1, 1))(inputs)
-    x = BatchNormalization()(x)
-    x = ReLU()(x)
-
-    x = Conv2D(filters=n_filters, kernel_size=3, padding='same', strides=(1, 1))(x)
-    x = BatchNormalization()(x)
-    x = ReLU()(x)
-
-    x = Conv2D(filters=n_filters, kernel_size=3, padding='same', strides=(1, 1))(x)
-    x = BatchNormalization()(x)
-    x = ReLU()(x)
-
-    x = Conv2D(filters=n_filters, kernel_size=3, padding='same', strides=(1, 1))(x)
-    x = BatchNormalization()(x)
-    x = ReLU()(x)
-
-    x = GlobalAveragePooling2D()(x)
-
-    x = Dense(512, kernel_initializer=initializer)(x)
-
-    policy = Dense(9, activation='softmax', kernel_initializer=initializer)(x)
-    value = Dense(1, activation='tanh', kernel_initializer=initializer)(x)
-
-    outputs = policy, value
-    model = Model(inputs=inputs, outputs=outputs, name='Oscar', )
-    model.summary()
-
-    model.compile(optimizer='adam', loss=['categorical_crossentropy', 'mean_squared_error'])
-    model.make_predict_function()
-
-    return model
+HYPER_PARAMS = {
+    'lr' : 0.001,
+    'l2' : 0.0001,
+    'n_layers' : 4,
+    'n_channels' : 64
+}
 
 
 def expand_action(action):
@@ -95,37 +47,24 @@ class Worker(threading.Thread):
         super(Worker, self).__init__()
         self.result_queue = result_queue
         self.global_model = global_model
-        self.local_model = simpleCNN(32)
-        self.local_model.set_weights(self.global_model.get_weights())
+        self.local_model = NeuralNetwork('./training/checkpoint',True,10)
         self.env = TicTacToe()
         self.fallback_agent = RandomPlayer(self.env)
         self.total_episodes = total_episodes
         self.mcts_sims = mcts_sims
-        self.opt = tf.keras.optimizers.Adam()
-        self.do_update = False
         self.experience = []
-
-    def compute_loss(self,
-                     exp):
-        boards, actions, vals = zip(*exp)
-        policies, values = self.local_model(np.array(boards))
-
-        loss_policy = tf.keras.losses.categorical_crossentropy(policies, np.array(actions))
-        loss_value = tf.keras.losses.MSE(values, np.array(vals).astype(float))
-        total_loss = tf.reduce_mean(loss_policy + loss_value)
-        return total_loss
 
     def run(self):
 
         while Worker.global_episode < self.total_episodes:
             observation = self.env.reset()
             observations = []
-            mcts = MonteCarloTreeSearch(self.env, self.local_model)
+            mcts = MonteCarloTreeSearch(self.local_model, self.mcts_sims)
             step_count = 0
             while True:
                 step_count += 1
                 # todo return policy vector for learning
-                selected_action = mcts.search(observation, self.mcts_sims)
+                selected_action = mcts.search()
                 if not selected_action > 0:
                     # mcts hasn't return valid value, use random baseline as fallback and report warning
                     selected_action = self.fallback_agent.get_action(observation)
@@ -139,15 +78,6 @@ class Worker(threading.Thread):
                     exp = [(self.env.to_nn_view(x[0]), expand_action(x[1]), (-1) ** (x[0][1] != reward)) for x in
                            observations]
                     self.experience.append(exp)
-                    if self.do_update:
-                        with tf.GradientTape() as tape:
-                            total_loss = self.compute_loss(exp)
-                        # Calculate local gradients
-                        grads = tape.gradient(total_loss, self.local_model.trainable_weights)
-                        # Push local gradients to global model
-                        self.opt.apply_gradients(zip(grads, self.global_model.trainable_weights))
-                        # Update local model with new weights
-                        self.local_model.set_weights(self.global_model.get_weights())
 
                     Worker.global_episode += 1
                     Worker.pBar.update(1)
@@ -157,7 +87,8 @@ class Worker(threading.Thread):
 
 def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
     history_train_examples = deque([], maxlen=queue_length)
-    global_model = simpleCNN(32)
+    global_model = NetworkWrapper(**HYPER_PARAMS)
+    global_model.save_model('training', 'checkpoint')
 
     Worker.pBar = tqdm(total=n_iter)
 
@@ -182,7 +113,11 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
         t_boards, t_actions, t_values = zip(*all_exp)
         t_boards, t_actions, t_values = shuffle(np.array(t_boards), np.array(t_actions), np.array(t_values))
 
-        model_candidate = clone_model(global_model)
+        global_model.save_model('training','checkpoint')
+
+        model_candidate = NetworkWrapper(**HYPER_PARAMS)
+        model_candidate.load_model('training','checkpoint')
+
         # model must be compiled
         model_candidate.compile(optimizer='adam', loss=['categorical_crossentropy', 'mean_squared_error'])
 

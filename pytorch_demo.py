@@ -4,7 +4,6 @@ from torch.utils.data import DataLoader
 from torchvision import datasets
 from torchvision.transforms import ToTensor
 
-from swig.distributed_mcts import MonteCarloTreeSearch
 
 print("Testing stuff")
 
