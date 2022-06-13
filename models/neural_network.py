@@ -28,8 +28,8 @@ class ConvBlock(nn.Module):
 
     def forward(self,x):
         out = self.conv(x)
-        out = self.bn(x)
-        out = self.relu(x)
+        out = self.bn(out)
+        out = self.relu(out)
         return out
 
 class ConvolutionNetwork(nn.Module):
@@ -38,7 +38,7 @@ class ConvolutionNetwork(nn.Module):
         super(ConvolutionNetwork, self).__init__()
 
         # Convolutional architecture
-        block_list = [ConvBlock(3,num_channels)] + [ConvBlock(num_channels,num_channels) for _ in range(num_layers)]
+        block_list = [ConvBlock(2,num_channels)] + [ConvBlock(num_channels,num_channels) for _ in range(num_layers)]
         self.conv_layers = nn.Sequential(*block_list)
 
         # policy head
@@ -78,7 +78,7 @@ class AlphaZeroLoss(nn.Module):
 
 class NetworkWrapper():
 
-    def __init__(self, lr, l2, n_layers, n_channels, train_use_gpu=True, libtorch_use_gpu=True):
+    def __init__(self, lr, l2, n_layers, n_channels, train_use_gpu=False, libtorch_use_gpu=False):
 
         self.num_channels = n_channels
         self.num_layers = n_layers
