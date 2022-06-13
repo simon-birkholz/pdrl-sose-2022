@@ -14,13 +14,15 @@ ${CMAKE_CURRENT_SOURCE_DIR}/kinarow.cpp
 
 set(swig_file ${CMAKE_CURRENT_SOURCE_DIR}/mcts.i)
 
-file(TO_NATIVE_PATH ${TORCH_LIBRARIES} ${TORCH_LIBRARIES})
-
+# when issues with torch libraries paths change enviroment variable xD
 
 #add_library(${target_name} SHARED ${PROJECT_FILES})
 set_property(SOURCE ${swig_file} PROPERTY CPLUSPLUS ON)
 swig_add_library(${target_name} TYPE SHARED LANGUAGE python SOURCES 
-	${swig_file} ${PROJECT_FILES} ${TORCH_LIBRARIES})
+	${swig_file} ${PROJECT_FILES})
+swig_link_libraries(${target_name} ${PYTHON_LIBRARIES} ${TORCH_LIBRARIES})
+
+
 
 target_include_directories(${target_name} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
