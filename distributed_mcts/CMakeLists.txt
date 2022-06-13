@@ -28,3 +28,5 @@ swig_link_libraries(${target_name} ${PYTHON_LIBRARIES} ${TORCH_LIBRARIES})
 target_include_directories(${target_name} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+add_custom_command(TARGET ${target_name} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${target_name}> ${SWIG_OUTPUT_DIR} )

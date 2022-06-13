@@ -4,7 +4,9 @@ from torch.utils.data import DataLoader
 from torchvision import datasets
 from torchvision.transforms import ToTensor
 
-from mcts_demo import Node
+from swig.distributed_mcts import MonteCarloTreeSearch
+
+print("Testing stuff")
 
 class ResNet(nn.Module):
     def __init__(self):

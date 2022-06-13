@@ -7,6 +7,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 set(CMAKE_PREFIX_PATH "C:/Program Files/libtorch/share/cmake/Torch")
+
+set(SWIG_OUTPUT_DIR ${PROJECT_SOURCE_DIR}/swig)
 find_package(Torch REQUIRED)
 
 

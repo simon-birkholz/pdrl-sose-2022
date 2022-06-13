@@ -10,69 +10,65 @@
 #include <mutex>
 #include <vector>
 
-namespace zero
+class Node;
+
+using node_ptr = std::shared_ptr<Node>;
+
+struct SearchState
 {
-  class Node;
+  std::vector<int> board;
+  int player;
+};
+class MonteCarloTreeSearch
+{
+  friend class Node;
 
-  using node_ptr = std::shared_ptr<Node>;
+public:
+  MonteCarloTreeSearch(std::shared_ptr<NeuralNetwork> network, unsigned n_sim);
 
-  struct SearchState
-  {
-    std::vector<int> board;
-    int player;
-  };
-  class MonteCarloTreeSearch
-  {
-    friend class Node;
+  std::vector<double> get_action_probabilites();
 
-  public:
-    MonteCarloTreeSearch(
-        std::shared_ptr<NeuralNetwork> network, unsigned n_sim);
+  void apply_action(int action);
 
-    std::vector<double> get_action_probabilites();
+  void search(SearchState game);
 
-    void apply_action(int action);
+  // Executes one Simulation
+  void simulate(KinaRow game);
 
-    void search(SearchState game);
+private:
+  unsigned n_sim_;
+  node_ptr root_;
+  common::thread_pool tpool_;
+  std::shared_ptr<NeuralNetwork> network_;
+};
 
-    // Executes one Simulation
-    void simulate(KinaRow game);
+class Node
+{
+public:
+  friend class MonteCarloTreeSearch;
 
-  private:
-    unsigned n_sim_;
-    node_ptr root_;
-    common::thread_pool tpool_;
-    std::shared_ptr<NeuralNetwork> network_;
-  };
+  Node();
+  Node(const Node& node);
+  Node(Node* parent, double prior);
+  Node& operator=(const Node& n);
 
-  class Node
-  {
-  public:
-    friend class MonteCarloTreeSearch;
+public:
+  bool is_terminal_state() const { return this->is_terminal_state_; }
+  void back_propagate(double leaf_value);
 
-    Node();
-    Node(const Node& node);
-    Node(Node* parent, double prior);
-    Node& operator=(const Node& n);
+  unsigned select(double c_puct, double c_virtual_loss);
+  void expand(const std::vector<double>& prior_probabilites);
 
-  public:
-    bool is_terminal_state() const { return this->is_terminal_state_; }
-    void back_propagate(double leaf_value);
-
-    unsigned select(double c_puct, double c_virtual_loss);
-    void expand(const std::vector<double>& prior_probabilites);
-
-    double upper_confidence_bound() const;
+  double upper_confidence_bound() const;
 
 
-  private:
-    Node* parent_;
-    std::map<unsigned, node_ptr> children_;
-    bool is_terminal_state_;
-    std::mutex lock_;
-    std::atomic<unsigned> visit_count_;
-    double prior_;
-    double action_value_;
-    std::atomic<int> virtual_loss_;
-  };
-} // namespace zero
+private:
+  Node* parent_;
+  std::map<unsigned, node_ptr> children_;
+  bool is_terminal_state_;
+  std::mutex lock_;
+  std::atomic<unsigned> visit_count_;
+  double prior_;
+  double action_value_;
+  std::atomic<int> virtual_loss_;
+};

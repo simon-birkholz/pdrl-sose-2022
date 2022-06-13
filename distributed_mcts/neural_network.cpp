@@ -1,6 +1,6 @@
 #include "neural_network.hpp"
 
-zero::NeuralNetwork::NeuralNetwork(
+NeuralNetwork::NeuralNetwork(
     std::string model_path, bool use_gpu, unsigned batch_size)
     : use_gpu_(use_gpu),
       batch_size_(batch_size),
@@ -23,7 +23,7 @@ zero::NeuralNetwork::NeuralNetwork(
   });
 }
 
-void zero::NeuralNetwork::intern()
+void NeuralNetwork::intern()
 {
   std::lock_guard<std::mutex> lock(model_lock_);
 
@@ -78,21 +78,20 @@ void zero::NeuralNetwork::intern()
   }
 }
 
-void zero::NeuralNetwork::reload_weights()
+void NeuralNetwork::reload_weights()
 {
   std::lock_guard<std::mutex> lock(model_lock_);
   torch_ = std::make_shared<torch::jit::script::Module>(
       torch::jit::load(model_path_.c_str()));
 }
 
-zero::NeuralNetwork::~NeuralNetwork()
+NeuralNetwork::~NeuralNetwork()
 {
   abort_ = true;
   loop_->join();
 }
 
-std::future<zero::NeuralNetwork::return_t>
-    zero::NeuralNetwork::evaluate(KinaRow* game)
+std::future<NeuralNetwork::return_t> NeuralNetwork::evaluate(KinaRow* game)
 {
   std::vector<int> board_state = game->get_board();
 

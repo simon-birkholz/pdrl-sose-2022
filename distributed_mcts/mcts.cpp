@@ -2,7 +2,7 @@
 
 #include "neural_network.hpp"
 
-zero::Node::Node()
+Node::Node()
     : parent_(nullptr),
       is_terminal_state_(true),
       virtual_loss_(0),
@@ -11,7 +11,7 @@ zero::Node::Node()
       action_value_(0)
 {}
 
-zero::Node::Node(const Node& node)
+Node::Node(const Node& node)
 {
   this->parent_ = node.parent_;
   this->children_ = node.children_;
@@ -23,7 +23,7 @@ zero::Node::Node(const Node& node)
   this->visit_count_.store(node.visit_count_.load());
 }
 
-zero::Node::Node(Node* parent, double prior)
+Node::Node(Node* parent, double prior)
     : parent_(parent),
       children_(),
       is_terminal_state_(true),
@@ -33,7 +33,7 @@ zero::Node::Node(Node* parent, double prior)
       prior_(prior)
 {}
 
-void zero::Node::back_propagate(double leaf_value)
+void Node::back_propagate(double leaf_value)
 {
   if (parent_ != nullptr)
   {
@@ -50,7 +50,7 @@ void zero::Node::back_propagate(double leaf_value)
   visit_count_++;
 }
 
-unsigned zero::Node::select(double c_puct, double c_virtual_loss)
+unsigned Node::select(double c_puct, double c_virtual_loss)
 {
   double max_ucb = std::numeric_limits<double>::min();
   unsigned best_action;
@@ -72,7 +72,7 @@ unsigned zero::Node::select(double c_puct, double c_virtual_loss)
   return best_action;
 }
 
-void zero::Node::expand(const std::vector<double>& prior_probabilites)
+void Node::expand(const std::vector<double>& prior_probabilites)
 {
   std::lock_guard<std::mutex> lock(lock_);
 
@@ -93,13 +93,13 @@ void zero::Node::expand(const std::vector<double>& prior_probabilites)
   is_terminal_state_ = false;
 }
 
-double zero::Node::upper_confidence_bound() const
+double Node::upper_confidence_bound() const
 {
   double U = prior_ / (1 + visit_count_);
   return action_value_ + U;
 }
 
-zero::Node& zero::Node::operator=(const zero::Node& n)
+Node& Node::operator=(const Node& n)
 {
   if (this == &n)
   {
@@ -118,7 +118,7 @@ zero::Node& zero::Node::operator=(const zero::Node& n)
   return *this;
 }
 
-zero::MonteCarloTreeSearch::MonteCarloTreeSearch(
+MonteCarloTreeSearch::MonteCarloTreeSearch(
     std::shared_ptr<NeuralNetwork> network, unsigned n_sim)
     : n_sim_(n_sim),
       root_(std::make_shared<Node>(nullptr, 1)),
@@ -126,7 +126,7 @@ zero::MonteCarloTreeSearch::MonteCarloTreeSearch(
       network_(network)
 {}
 
-std::vector<double> zero::MonteCarloTreeSearch::get_action_probabilites()
+std::vector<double> MonteCarloTreeSearch::get_action_probabilites()
 {
   std::vector<double> result(9, 0);
   int visit_sum = 0;
@@ -144,7 +144,7 @@ std::vector<double> zero::MonteCarloTreeSearch::get_action_probabilites()
   return std::move(result);
 }
 
-void zero::MonteCarloTreeSearch::apply_action(int action)
+void MonteCarloTreeSearch::apply_action(int action)
 {
   if (action >= 0 && root_->children_.find(action) != root_->children_.end())
   {
@@ -160,7 +160,7 @@ void zero::MonteCarloTreeSearch::apply_action(int action)
   }
 }
 
-void zero::MonteCarloTreeSearch::search(SearchState game)
+void MonteCarloTreeSearch::search(SearchState game)
 {
   std::vector<std::future<void>> futures;
 
@@ -181,7 +181,7 @@ void zero::MonteCarloTreeSearch::search(SearchState game)
   }
 }
 
-void zero::MonteCarloTreeSearch::simulate(KinaRow game)
+void MonteCarloTreeSearch::simulate(KinaRow game)
 {
   node_ptr node = root_;
 
