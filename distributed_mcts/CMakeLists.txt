@@ -8,6 +8,7 @@ ${CMAKE_CURRENT_SOURCE_DIR}/mcts.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/neural_network.hpp
 ${CMAKE_CURRENT_SOURCE_DIR}/neural_network.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/threadpool.hpp
+${CMAKE_CURRENT_SOURCE_DIR}/waiting_queue.hpp
 ${CMAKE_CURRENT_SOURCE_DIR}/kinarow.hpp
 ${CMAKE_CURRENT_SOURCE_DIR}/kinarow.cpp
 )
