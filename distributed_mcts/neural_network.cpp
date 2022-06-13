@@ -4,6 +4,7 @@ zero::NeuralNetwork::NeuralNetwork(
     std::string model_path, bool use_gpu, unsigned batch_size)
     : use_gpu_(use_gpu),
       batch_size_(batch_size),
+      model_path_(model_path),
       torch_(std::make_shared<torch::jit::script::Module>(
           torch::jit::load(model_path.c_str()))),
       task_queue_()
@@ -24,6 +25,8 @@ zero::NeuralNetwork::NeuralNetwork(
 
 void zero::NeuralNetwork::intern()
 {
+  std::lock_guard<std::mutex> lock(model_lock_);
+
   std::vector<torch::Tensor> states;
   std::vector<std::promise<return_t>> promises;
 
@@ -75,6 +78,13 @@ void zero::NeuralNetwork::intern()
   }
 }
 
+void zero::NeuralNetwork::reload_weights()
+{
+  std::lock_guard<std::mutex> lock(model_lock_);
+  torch_ = std::make_shared<torch::jit::script::Module>(
+      torch::jit::load(model_path_.c_str()));
+}
+
 zero::NeuralNetwork::~NeuralNetwork()
 {
   abort_ = true;
@@ -106,8 +116,7 @@ std::future<zero::NeuralNetwork::return_t>
   std::promise<return_t> promise;
   std::future<return_t> future = promise.get_future();
 
-  task_queue_.push(
-      std::make_pair(std::move(state), std::move(promise)));
+  task_queue_.push(std::make_pair(std::move(state), std::move(promise)));
 
   return future;
 }
