@@ -1,12 +1,14 @@
 #pragma once
 
+#include "kinarow.hpp"
+#include "neural_network.hpp"
+#include "threadpool.hpp"
+
 #include <atomic>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <vector>
-#include "threadpool.hpp"
-#include "kinarow.hpp"
 
 namespace zero
 {
@@ -24,7 +26,8 @@ namespace zero
     friend class Node;
 
   public:
-    MonteCarloTreeSearch(unsigned n_sim);
+    MonteCarloTreeSearch(
+        std::shared_ptr<NeuralNetwork> network, unsigned n_sim);
 
     std::vector<double> get_action_probabilites();
 
@@ -39,6 +42,7 @@ namespace zero
     unsigned n_sim_;
     node_ptr root_;
     common::thread_pool tpool_;
+    std::shared_ptr<NeuralNetwork> network_;
   };
 
   class Node

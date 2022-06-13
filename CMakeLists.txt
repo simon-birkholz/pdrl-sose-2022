@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.20.0)
 
 project(alphaZero)
 
+# specify the C++ standard
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 set(CMAKE_PREFIX_PATH "C:/Program Files/libtorch/share/cmake/Torch")
 find_package(Torch REQUIRED)

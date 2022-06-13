@@ -118,8 +118,12 @@ zero::Node& zero::Node::operator=(const zero::Node& n)
   return *this;
 }
 
-zero::MonteCarloTreeSearch::MonteCarloTreeSearch(unsigned n_sim)
-    : n_sim_(n_sim), root_(std::make_shared<Node>(nullptr, 1)), tpool_(1)
+zero::MonteCarloTreeSearch::MonteCarloTreeSearch(
+    std::shared_ptr<NeuralNetwork> network, unsigned n_sim)
+    : n_sim_(n_sim),
+      root_(std::make_shared<Node>(nullptr, 1)),
+      tpool_(1),
+      network_(network)
 {}
 
 std::vector<double> zero::MonteCarloTreeSearch::get_action_probabilites()
@@ -202,7 +206,7 @@ void zero::MonteCarloTreeSearch::simulate(KinaRow game)
   {
     std::vector<double> action_priors(9, 0);
 
-    auto future = NeuralNetwork::instance().evaluate(game);
+    auto future = network_->evaluate(&game);
     auto result = future.get();
     action_priors = std::move(result.first);
     value = result.second;
@@ -226,7 +230,7 @@ void zero::MonteCarloTreeSearch::simulate(KinaRow game)
     }
     for (int i = 0; i < 9; i++)
     {
-       action_priors[i] /= p_sum;
+      action_priors[i] /= p_sum;
     }
 
     // TODO workaround if all actions invalid

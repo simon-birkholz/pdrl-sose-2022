@@ -1,16 +1,113 @@
 #include "neural_network.hpp"
 
-
 zero::NeuralNetwork::NeuralNetwork(
     std::string model_path, bool use_gpu, unsigned batch_size)
-    : use_gpu_(use_gpu), batch_size_(batch_size)
-{}
-
-zero::NeuralNetwork::~NeuralNetwork() {}
-
-std::future<zero::NeuralNetwork::return_type>
-    zero::NeuralNetwork::evaluate(KinaRow game)
+    : use_gpu_(use_gpu),
+      batch_size_(batch_size),
+      torch_(std::make_shared<torch::jit::script::Module>(
+          torch::jit::load(model_path.c_str()))),
+      task_queue_()
 {
+  if (use_gpu_)
+  {
+    // move to gpu
+    torch_->to(at::kCUDA);
+  }
+
+  loop_ = std::make_unique<std::thread>([&] {
+    while (!abort_)
+    {
+      intern();
+    }
+  });
+}
+
+void zero::NeuralNetwork::intern()
+{
+  std::vector<torch::Tensor> states;
+  std::vector<std::promise<return_t>> promises;
+
+  constexpr std::chrono::milliseconds timeout(10);
+  bool is_timeout = false;
+
+  while (states.size() < batch_size_ && !is_timeout)
+  {
+    auto val = task_queue_.try_pop(timeout);
+    if (val.has_value())
+    {
+      states.emplace_back(std::move(val.value().first));
+      promises.emplace_back(std::move(val.value().second));
+    }
+    else
+    {
+      is_timeout = true;
+    }
+  }
+
+  if (states.size() == 0)
+    return;
+
+  std::vector<torch::jit::IValue> to_network{
+      use_gpu_ ? torch::cat(states, 0).to(at::kCUDA) : torch::cat(states, 0)};
+
+  auto res = torch_->forward(to_network).toTuple();
+
+  torch::Tensor p_Batch =
+      res->elements()[0].toTensor().exp().toType(torch::kFloat32).to(at::kCPU);
+
+  torch::Tensor v_Batch =
+      res->elements()[1].toTensor().toType(torch::kFloat32).to(at::kCPU);
+
+  for (int i = 0; i < promises.size(); i++)
+  {
+    torch::Tensor p = p_Batch[i];
+    torch::Tensor v = v_Batch[i];
+
+    std::vector<double> probabilites(
+        static_cast<float*>(p.data_ptr<float>()),
+        static_cast<float*>(p.data_ptr<float>() + p.size(0)));
+
+    double value = v.item<float>();
+
+    return_t ret = std::make_pair(std::move(probabilites), value);
+
+    promises[i].set_value(std::move(ret));
+  }
+}
+
+zero::NeuralNetwork::~NeuralNetwork()
+{
+  abort_ = true;
+  loop_->join();
+}
+
+std::future<zero::NeuralNetwork::return_t>
+    zero::NeuralNetwork::evaluate(KinaRow* game)
+{
+  std::vector<int> board_state = game->get_board();
+
   // assume only tic tac toe for now
-  return std::future<return_type>();
+  torch::Tensor tmp = torch::from_blob(
+      &board_state.begin(), {1, 1, 3, 3}, torch::dtype(torch::kInt32));
+
+  // extract feature maps
+  torch::Tensor channel0 = tmp.gt(0).toType(torch::kFloat32);
+  torch::Tensor channel1 = tmp.lt(0).toType(torch::kFloat32);
+
+  int curr_player = game->get_player();
+
+  if (curr_player == -1)
+  {
+    std::swap(channel0, channel1);
+  }
+
+  torch::Tensor state = torch::cat({channel0, channel1}, 1);
+
+  std::promise<return_t> promise;
+  std::future<return_t> future = promise.get_future();
+
+  task_queue_.push(
+      std::make_pair(std::move(state), std::move(promise)));
+
+  return future;
 }

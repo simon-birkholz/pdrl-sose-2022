@@ -16,6 +16,8 @@ public:
 
   void apply_action(int action);
 
+  std::vector<int> get_board() const { return board_; }
+
 private:
   const int height_;
   const int width_;

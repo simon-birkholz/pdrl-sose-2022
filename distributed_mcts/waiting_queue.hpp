@@ -1,6 +1,7 @@
 #pragma once
 
 
+#include <chrono>
 #include <condition_variable>
 #include <mutex>
 #include <optional>
@@ -23,8 +24,6 @@ namespace common
       container.clear();
     }
 
-
-
     T pop()
     {
       std::unique_lock lock(mutex);
@@ -35,6 +34,13 @@ namespace common
       auto object = std::move(container.front());
       container.pop_front();
       return std::move(object);
+    }
+
+    void push(T object)
+    {
+      std::lock_guard lock(mutex);
+      container.emplace_back(std::move(object));
+      cv.notify_one();
     }
 
     std::optional<T> try_pop(std::chrono::milliseconds timeout)
