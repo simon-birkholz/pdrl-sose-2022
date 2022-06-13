@@ -1,3 +1,4 @@
+import os
 import random
 
 import torch
@@ -83,6 +84,7 @@ class NetworkWrapper():
 
         self.lr = lr
         self.l2 = l2
+        self.n = 3
 
         self.train_use_gpu = train_use_gpu
         self.libtorch_use_gpu = libtorch_use_gpu
@@ -126,6 +128,41 @@ class NetworkWrapper():
         policy, value = self.neural_network(state)
 
         return policy.cpu().detach().numpy() , value.cpu().detach().numpy()
+
+    def load_model(self, folder='pretrained', filename='checkpoint'):
+
+        filepath = os.path.join(folder,filename)
+        state = torch.load(filepath)
+        self.neural_network.load_state_dict(state['network'])
+        self.optim.load_state_dict(state['optim'])
+
+    def save_model(self, folder='pretrained', filename='checkpoint'):
+
+        if not os.path.exists(folder):
+            os.mkdir(folder)
+
+        filepath = os.path.join(folder,filename)
+        state = {'network' : self.neural_network.state_dict() , 'optim' : self.optim.state_dict()}
+        torch.save(state,filepath)
+
+        # save torchscript
+        filepath += '.pt'
+        self.neural_network.eval()
+
+        if self.libtorch_use_gpu:
+            self.neural_network.cuda()
+            example = torch.rand(1, 2, self.n, self.n).cuda()
+        else:
+            self.neural_network.cpu()
+            example = torch.rand(1, 2, self.n, self.n).cpu()
+
+        traced_script_module = torch.jit.trace(self.neural_network, example)
+        traced_script_module.save(filepath)
+
+        if self.train_use_gpu:
+            self.neural_network.cuda()
+        else:
+            self.neural_network.cpu()
 
 
 
