@@ -7,13 +7,17 @@ from torch.optim import Adam
 from torch.autograd import Variable
 import torch.nn.functional as F
 
-
 import numpy as np
 
 
 def conv3x3(i_channels, out_channels, stride=1):
     # 3x3 convolution
     return nn.Conv2d(i_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
+
+
+def avg_pool(kernel_size=2, stride=2):
+    return nn.AvgPool2d(kernel_size=kernel_size, stride=stride, padding=0)
+
 
 class ConvBlock(nn.Module):
     """
@@ -22,15 +26,16 @@ class ConvBlock(nn.Module):
 
     def __init__(self, in_channels, out_channels):
         super(ConvBlock, self).__init__()
-        self.conv = conv3x3(in_channels,out_channels)
+        self.conv = conv3x3(in_channels, out_channels)
         self.bn = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU(inplace=True)
 
-    def forward(self,x):
+    def forward(self, x):
         out = self.conv(x)
         out = self.bn(out)
         out = self.relu(out)
         return out
+
 
 class ConvolutionNetwork(nn.Module):
 
@@ -38,7 +43,7 @@ class ConvolutionNetwork(nn.Module):
         super(ConvolutionNetwork, self).__init__()
 
         # Convolutional architecture
-        block_list = [ConvBlock(2,num_channels)] + [ConvBlock(num_channels,num_channels) for _ in range(num_layers)]
+        block_list = [ConvBlock(2, num_channels)] + [ConvBlock(num_channels, num_channels) for _ in range(num_layers)]
         self.conv_layers = nn.Sequential(*block_list)
 
         # policy head
@@ -54,8 +59,7 @@ class ConvolutionNetwork(nn.Module):
         self.v_fc = nn.Linear(256, 1)
         self.tanh = nn.Tanh()
 
-    def forward(self,x):
-
+    def forward(self, x):
         out = self.conv_layers(x)
 
         # policy head
@@ -73,7 +77,131 @@ class ConvolutionNetwork(nn.Module):
         v = self.v_fc(v)
         v = self.tanh(v)
 
-        return p,v
+        return p, v
+
+
+class DenseBlock(nn.Module):
+    """
+    A simple dense block consisting of 5 convolutional layers with Batch Normalization and ReLU activation
+    """
+
+    def __init__(self, in_channels, out_channels):
+        super(DenseBlock, self).__init__()
+        self.bn = nn.BatchNorm2d(out_channels)
+        self.relu = nn.ReLU(inplace=True)
+
+        self.conv1 = conv3x3(in_channels, out_channels)
+        self.conv2 = conv3x3(in_channels, out_channels)
+        self.conv3 = conv3x3(in_channels * 2, out_channels)
+        self.conv4 = conv3x3(in_channels * 3, out_channels)
+        self.conv5 = conv3x3(in_channels * 4, out_channels)
+
+    def forward(self, x):
+        out = self.bn(x)
+        conv1 = self.relu(self.conv1(out))
+
+        conv2 = self.relu(self.conv2(conv1))
+        out = self.relu(torch.cat([conv1, conv2], 1))
+
+        conv3 = self.relu(self.conv3(out))
+        out = self.relu(torch.cat([conv1, conv2, conv3]), 1)
+
+        conv4 = self.relu(self.conv4(out))
+        out = self.relu(torch.cat([conv1, conv2, conv3, conv4], 1))
+
+        conv5 = self.relu(self.conv5(out))
+        out = self.relu(torch.cat([conv1, conv2, conv3, conv4, conv5], 1))
+
+        return out
+
+
+def _make_dense_block(block, in_channels):
+    layers = [block(in_channels)]
+    return nn.Sequential(*layers)
+
+
+# TODO different conv parameters
+class TransitionLayer(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(TransitionLayer, self).__init__()
+
+        self.bn = nn.BatchNorm2d(out_channels)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv = conv3x3(in_channels, out_channels)
+
+        self.avg_pool = avg_pool()
+
+    def forward(self, x):
+        out = self.bn(self.relu(self.conv(x)))
+        out = self.avg_pool(out)
+
+        return out
+
+
+def _make_transition_layer(layer, in_channels, out_channels):
+    modules = [layer(in_channels, out_channels)]
+    return nn.Sequential(*modules)
+
+
+# TODO different block and layer parameters, also: forward method probably faulty
+class DenseNetwork(nn.Module):
+    def __init__(self, num_layers, num_channels, n, action_size):
+        super(DenseNetwork, self).__init__()
+
+        self.conv = conv3x3(num_channels, num_channels)
+
+        self.denseblock1 = _make_dense_block(DenseBlock, num_channels)
+        self.denseblock2 = _make_dense_block(DenseBlock, num_channels * 2)
+        self.denseblock3 = _make_dense_block(DenseBlock, num_channels * 2)
+
+        self.transitionLayer1 = _make_transition_layer(TransitionLayer, in_channels=num_channels,
+                                                       out_channels=num_channels)
+        self.transitionLayer1 = _make_transition_layer(TransitionLayer, in_channels=num_channels / 2,
+                                                       out_channels=num_channels / 2)
+        self.transitionLayer1 = _make_transition_layer(TransitionLayer, in_channels=num_channels / 4,
+                                                       out_channels=num_channels / 4)
+
+        # policy head
+        self.p_conv = nn.Conv2d(num_channels, 1, kernel_size=1, padding=0, bias=False)
+        self.p_bn = nn.BatchNorm2d(num_features=1)
+        self.p_relu = nn.ReLU(inplace=True)
+
+        self.p_lin = nn.Linear(n ** 2, action_size)
+        self.softmax = nn.Softmax(dim=0)
+
+        # value Head
+        self.v_lin = nn.Linear(n ** 2, 256)
+        self.v_fc = nn.Linear(256, 1)
+        self.tanh = nn.Tanh()
+
+    def forward(self, x):
+        out = self.relu(self.conv(x))
+
+        out = self.denseblock1(out)
+        out = self.transitionLayer1(out)
+
+        out = self.denseblock2(out)
+        out = self.transitionLayer2(out)
+
+        out = self.denseblock3(out)
+        out = self.transitionLayer3(out)
+
+        # policy head
+        out = self.p_conv(out)
+        out = self.p_bn(out)
+        out = self.p_relu(out)
+
+        out = torch.flatten(out, start_dim=1)
+
+        p = self.p_lin(out)
+        p = self.softmax(p)
+
+        # value head
+        v = self.v_lin(out)
+        v = self.v_fc(v)
+        v = self.tanh(v)
+
+        return p, v
 
 
 class AlphaZeroLoss(nn.Module):
@@ -102,7 +230,7 @@ class NetworkWrapper():
         self.train_use_gpu = train_use_gpu
         self.libtorch_use_gpu = libtorch_use_gpu
 
-        self.neural_network = ConvolutionNetwork(self.num_layers,self.num_channels,self.n,self.n ** 2)
+        self.neural_network = ConvolutionNetwork(self.num_layers, self.num_channels, self.n, self.n ** 2)
         if self.train_use_gpu:
             self.neural_network.cuda()
 
@@ -118,7 +246,6 @@ class NetworkWrapper():
 
             t_boards, t_actions, t_values = zip(*train_data)
 
-
             b_batch = torch.from_numpy(np.array(t_boards).astype(np.float32))
             p_batch = torch.from_numpy(np.array(t_actions).astype(np.float32))
             v_batch = torch.from_numpy(np.array(t_values).astype(np.float32))
@@ -131,7 +258,7 @@ class NetworkWrapper():
             self.optim.zero_grad()
 
             ps, vs = self.neural_network(b_batch)
-            loss = self.loss(ps,vs,p_batch,v_batch)
+            loss = self.loss(ps, vs, p_batch, v_batch)
             loss.backward()
 
             self.optim.step()
@@ -144,11 +271,11 @@ class NetworkWrapper():
 
         policy, value = self.neural_network(tens)
 
-        return policy.cpu().detach().numpy() , value.cpu().detach().numpy()
+        return policy.cpu().detach().numpy(), value.cpu().detach().numpy()
 
     def load_model(self, folder='pretrained', filename='checkpoint'):
 
-        filepath = os.path.join(folder,filename)
+        filepath = os.path.join(folder, filename)
         state = torch.load(filepath)
         self.neural_network.load_state_dict(state['network'])
         self.optim.load_state_dict(state['optim'])
@@ -158,9 +285,9 @@ class NetworkWrapper():
         if not os.path.exists(folder):
             os.mkdir(folder)
 
-        filepath = os.path.join(folder,filename)
-        state = {'network' : self.neural_network.state_dict() , 'optim' : self.optim.state_dict()}
-        torch.save(state,filepath)
+        filepath = os.path.join(folder, filename)
+        state = {'network': self.neural_network.state_dict(), 'optim': self.optim.state_dict()}
+        torch.save(state, filepath)
 
         # save torchscript
         filepath += '.pt'
@@ -180,6 +307,3 @@ class NetworkWrapper():
             self.neural_network.cuda()
         else:
             self.neural_network.cpu()
-
-
-
