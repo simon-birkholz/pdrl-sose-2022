@@ -42,7 +42,7 @@ class TicTacToe(Game):
             print('action space = {}'.format(self.env.action_space))
 
     def reset(self):
-        return np.array(self.env.reset())
+        return self.env.reset()
 
     def get_valid(self,state):
         return self.env.get_valid(state)
