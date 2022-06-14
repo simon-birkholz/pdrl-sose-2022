@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.20.0)
 
 project(alphaZero)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
+
 # specify the C++ standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
@@ -24,7 +26,7 @@ message("found python at ${PYTHON_LIBRARIES}")
 include_directories(${PYTHON_INCLUDE_PATH})
 
 
-
+include(test)
 
 add_subdirectory(distributed_mcts)
 

@@ -10,11 +10,15 @@ import os
 import numpy as np
 from sklearn.utils import shuffle
 
+import os
+os.add_dll_directory('C:\\Program Files\\libtorch\\lib')
+
 from models.neural_network import NetworkWrapper
 
-from swig.distributed_mcts import MonteCarloTreeSearch
+from swig.distributed_mcts import MonteCarloTreeSearch, SearchState
 from swig.distributed_mcts import NeuralNetwork
 
+import mcts as old_mcts
 #from mcts import MonteCarloTreeSearch
 
 from tqdm import tqdm
@@ -25,8 +29,6 @@ from colosseum import Colosseum
 from ai_player import AiPlayer
 
 import threading
-
-from models.neural_network import NetworkWrapper
 
 HYPER_PARAMS = {
     'lr' : 0.001,
@@ -47,29 +49,38 @@ class Worker(threading.Thread):
     pBar = tqdm()
     save_lock = threading.Lock()
 
-    def __init__(self, total_episodes, mcts_sims, global_model, result_queue):
+    def __init__(self, total_episodes, mcts_sims, global_model, result_queue, use_swig=False):
         super(Worker, self).__init__()
         self.result_queue = result_queue
         self.global_model = global_model
-        self.local_model = NeuralNetwork('./training/checkpoint.pt',False,10)
+        if use_swig:
+            self.local_model = NeuralNetwork('./training/checkpoint.pt',False,10)
         self.env = TicTacToe()
         self.fallback_agent = RandomPlayer(self.env)
         self.total_episodes = total_episodes
         self.mcts_sims = mcts_sims
         self.experience = []
+        self.use_swig = use_swig
 
     def run(self):
 
         while Worker.global_episode < self.total_episodes:
             observation = self.env.reset()
             observations = []
-            mcts = MonteCarloTreeSearch(self.local_model, self.mcts_sims)
-            #mcts = MonteCarloTreeSearch(self.env, self.global_model)
+            mcts = None
+            if self.use_swig:
+                mcts = MonteCarloTreeSearch(self.local_model, self.mcts_sims)
+            else:
+                mcts = old_mcts.MonteCarloTreeSearch(self.env, self.global_model)
             step_count = 0
             while True:
                 step_count += 1
                 # todo return policy vector for learning
-                selected_action = mcts.search(observation)
+                selected_action = 0
+                if self.use_swig:
+                    selected_action = mcts.search(SearchState(observation[0].flatten().tolist(),observation[1]))
+                else:
+                    selected_action = mcts.search(observation,self.mcts_sims)
                 if not selected_action > 0:
                     # mcts hasn't return valid value, use random baseline as fallback and report warning
                     selected_action = self.fallback_agent.get_action(observation)
@@ -114,6 +125,10 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
         all_exp = [w.experience for w in workers]
         all_exp = [x for xs in all_exp for x in xs]
         all_exp = [x for xs in all_exp for x in xs]
+
+        if len(all_exp) == 0:
+            # something went wrong
+            raise RuntimeError("Something probably went wrong")
 
         t_boards, t_actions, t_values = zip(*all_exp)
         t_boards, t_actions, t_values = shuffle(np.array(t_boards), np.array(t_actions), np.array(t_values))

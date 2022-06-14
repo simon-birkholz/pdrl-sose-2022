@@ -8,29 +8,28 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <utility>
 #include <vector>
 
 class Node;
 
 using node_ptr = std::shared_ptr<Node>;
 
-struct SearchState
-{
-  std::vector<int> board;
-  int player;
-};
+using search_t = std::pair<std::vector<int>, int>;
 class MonteCarloTreeSearch
 {
   friend class Node;
 
 public:
-  MonteCarloTreeSearch(std::shared_ptr<NeuralNetwork> network, unsigned n_sim);
+  // smart pointer too much headdache
+
+  MonteCarloTreeSearch(NeuralNetwork* network, unsigned n_sim);
 
   std::vector<double> get_action_probabilites();
 
   void apply_action(int action);
 
-  void search(SearchState game);
+  void search(search_t game);
 
   // Executes one Simulation
   void simulate(KinaRow game);
@@ -39,7 +38,7 @@ private:
   unsigned n_sim_;
   node_ptr root_;
   common::thread_pool tpool_;
-  std::shared_ptr<NeuralNetwork> network_;
+  NeuralNetwork* network_;
 };
 
 class Node

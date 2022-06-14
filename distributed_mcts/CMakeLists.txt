@@ -23,16 +23,22 @@ message("${TORCH_LIBRARIES}")
 
 #add_library(${target_name} SHARED ${PROJECT_FILES})
 set_property(SOURCE ${swig_file} PROPERTY CPLUSPLUS ON)
+
 swig_add_library(${target_name} TYPE SHARED LANGUAGE python SOURCES 
 	${swig_file} ${PROJECT_FILES})
 swig_link_libraries(${target_name} ${PYTHON_LIBRARIES} ${TORCH_LIBRARIES})
 
+add_library(mcts_internal STATIC ${PROJECT_FILES})
+target_link_libraries(mcts_internal ${TORCH_LIBRARIES})
 
+target_compile_definitions(mcts_internal  PUBLIC ZERO_USE_CUDA)
 target_compile_definitions(${target_name} PUBLIC ZERO_USE_CUDA)
 
-target_compile_definitions(${target_name} PUBLIC ZERO_TROCH_LIBS=${TORCH_LIBS_PATH})
-
 target_include_directories(${target_name} PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+target_include_directories(mcts_internal  PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
@@ -41,3 +47,5 @@ add_custom_command(TARGET ${target_name} POST_BUILD COMMAND ${CMAKE_COMMAND} -E 
 add_custom_command(TARGET ${target_name} POST_BUILD
                    COMMAND ${CMAKE_COMMAND} -E copy_directory
                        "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIGURATION>/" ${SWIG_OUTPUT_DIR})
+include(test)
+add_zero_test(mcts_internal "")

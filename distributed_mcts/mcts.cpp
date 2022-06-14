@@ -119,7 +119,7 @@ Node& Node::operator=(const Node& n)
 }
 
 MonteCarloTreeSearch::MonteCarloTreeSearch(
-    std::shared_ptr<NeuralNetwork> network, unsigned n_sim)
+    NeuralNetwork* network, unsigned n_sim)
     : n_sim_(n_sim),
       root_(std::make_shared<Node>(nullptr, 1)),
       tpool_(1),
@@ -160,13 +160,13 @@ void MonteCarloTreeSearch::apply_action(int action)
   }
 }
 
-void MonteCarloTreeSearch::search(SearchState game)
+void MonteCarloTreeSearch::search(search_t game)
 {
   std::vector<std::future<void>> futures;
 
   for (int i = 0; i < n_sim_; i++)
   {
-    KinaRow gWrapper(3, 3, game.board, game.player);
+    KinaRow gWrapper(3, 3, game.first, game.second);
     // lets hope this works
     auto f =
         std::bind(&MonteCarloTreeSearch::simulate, this, std::placeholders::_1);

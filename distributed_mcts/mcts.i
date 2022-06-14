@@ -13,7 +13,9 @@
 #include <cstring>
 %}
 
-%include "std_string.i"
+%include <std_string.i>
+%include <std_pair.i>
+%include <std_vector.i>
 
 %include "kinarow.hpp"
 %include "mcts.hpp"
@@ -28,6 +30,11 @@
     void reload_weights();
 
   };
+  
+%template(IntVector) std::vector<int>;
+%template(DoubleVector) std::vector<double>;
+
+%template(SearchState) std::pair<std::vector<int>,int>;
 
 
 %include <std_shared_ptr.i>
