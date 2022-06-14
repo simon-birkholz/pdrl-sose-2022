@@ -1,9 +1,0 @@
-tensorflow
-tensorflow_datasets
-keras
-tqdm
-gym
-boardgame2
-scikit-learn
-numpy
-torch

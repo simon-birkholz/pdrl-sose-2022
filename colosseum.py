@@ -1,6 +1,5 @@
 from random import randrange
-from tensorflow import keras
-import tensorflow as tf
+
 import gym
 import boardgame2
 import numpy as np
@@ -10,8 +9,6 @@ from tqdm import tqdm
 from baselines import RandomPlayer
 from ai_player import AiPlayer
 from games.kinarow import  TicTacToe
-
-tf.config.set_visible_devices([], 'GPU')
 
 
 class Colosseum:

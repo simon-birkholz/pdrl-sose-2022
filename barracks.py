@@ -5,14 +5,15 @@ import boardgame2
 from collections import deque
 import time
 import argparse
+import os
 
 import numpy as np
 from sklearn.utils import shuffle
 
-#from swig.distributed_mcts import MonteCarloTreeSearch
-#from swig.distributed_mcts import NeuralNetwork
+from swig.distributed_mcts import MonteCarloTreeSearch
+from swig.distributed_mcts import NeuralNetwork
 
-from mcts import MonteCarloTreeSearch
+#from mcts import MonteCarloTreeSearch
 
 from tqdm import tqdm
 from baselines import RandomPlayer
@@ -24,7 +25,6 @@ from ai_player import AiPlayer
 import threading
 
 from models.neural_network import NetworkWrapper
-
 
 HYPER_PARAMS = {
     'lr' : 0.001,
@@ -49,7 +49,7 @@ class Worker(threading.Thread):
         super(Worker, self).__init__()
         self.result_queue = result_queue
         self.global_model = global_model
-        #self.local_model = NeuralNetwork('./training/checkpoint',True,10)
+        self.local_model = NeuralNetwork('./training/checkpoint',False,10)
         self.env = TicTacToe()
         self.fallback_agent = RandomPlayer(self.env)
         self.total_episodes = total_episodes
@@ -61,13 +61,13 @@ class Worker(threading.Thread):
         while Worker.global_episode < self.total_episodes:
             observation = self.env.reset()
             observations = []
-            #mcts = MonteCarloTreeSearch(self.local_model, self.mcts_sims)
-            mcts = MonteCarloTreeSearch(self.env, self.global_model)
+            mcts = MonteCarloTreeSearch(self.local_model, self.mcts_sims)
+            #mcts = MonteCarloTreeSearch(self.env, self.global_model)
             step_count = 0
             while True:
                 step_count += 1
                 # todo return policy vector for learning
-                selected_action = mcts.search(observation,self.mcts_sims)
+                selected_action = mcts.search(observation)
                 if not selected_action > 0:
                     # mcts hasn't return valid value, use random baseline as fallback and report warning
                     selected_action = self.fallback_agent.get_action(observation)

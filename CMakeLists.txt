@@ -11,12 +11,16 @@ set(CMAKE_PREFIX_PATH "C:/Program Files/libtorch/share/cmake/Torch")
 set(SWIG_OUTPUT_DIR ${PROJECT_SOURCE_DIR}/swig)
 find_package(Torch REQUIRED)
 
+get_filename_component(TORCH_LIBS_PATH ${TORCH_LIBRARY} DIRECTORY CACHE)
 
 
 find_package(SWIG REQUIRED)
 include(${SWIG_USE_FILE})
 
-find_package(PythonLibs REQUIRED)
+find_package(PythonLibs 3.9 REQUIRED)
+
+message("found python at ${PYTHON_LIBRARIES}")
+
 include_directories(${PYTHON_INCLUDE_PATH})
 
 

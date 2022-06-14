@@ -11,8 +11,10 @@ NeuralNetwork::NeuralNetwork(
 {
   if (use_gpu_)
   {
+#if ZERO_USE_CUDA
     // move to gpu
     torch_->to(at::kCUDA);
+#endif
   }
 
   loop_ = std::make_unique<std::thread>([&] {
@@ -50,8 +52,12 @@ void NeuralNetwork::intern()
   if (states.size() == 0)
     return;
 
+#if ZERO_USE_CUDA
   std::vector<torch::jit::IValue> to_network{
       use_gpu_ ? torch::cat(states, 0).to(at::kCUDA) : torch::cat(states, 0)};
+#else
+  std::vector<torch::jit::IValue> to_network{torch::cat(states, 0)};
+#endif
 
   auto res = torch_->forward(to_network).toTuple();
 
