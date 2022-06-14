@@ -100,7 +100,7 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
     for i in range(0, global_eps):
 
         Worker.global_episode = 0
-        workers = [Worker(3,
+        workers = [Worker(20,
                           100,
                           global_model,
                           history_train_examples) for i in range(threads)]
@@ -133,13 +133,14 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
         if n_wins > 16:
             print("Adapting weights")
             # adapt new model weights
-            global_model.set_weights(model_candidate.get_weights())
+            model_candidate.save_model('training', 'checkpoint')
+            global_model.load_model('training', 'checkpoint')
             try:
-                global_model.save(save_dir)
+                global_model.save_model(save_dir, 'checkpoint')
             except:
                 print("Error on saving new model")
 
-    global_model.save(save_dir)
+    global_model.save_model(save_dir,'final')
 
 
 if __name__ == '__main__':
