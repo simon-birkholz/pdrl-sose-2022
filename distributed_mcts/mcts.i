@@ -1,8 +1,6 @@
 %module distributed_mcts
 
 
-
-
 %{
 #define SWIG_FILE_WITH_INIT
 #include "mcts.hpp"
@@ -30,4 +28,7 @@
     void reload_weights();
 
   };
-  
+
+
+%include <std_shared_ptr.i>
+%shared_ptr(NeuralNetwork);

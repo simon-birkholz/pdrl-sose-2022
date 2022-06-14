@@ -37,6 +37,7 @@ target_include_directories(${target_name} PUBLIC
 )
 
 #add_custom_command(TARGET ${target_name} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${target_name}> ${SWIG_OUTPUT_DIR} )
+add_custom_command(TARGET ${target_name} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_BINARY_DIR}/${target_name}.py" ${SWIG_OUTPUT_DIR} )
 add_custom_command(TARGET ${target_name} POST_BUILD
                    COMMAND ${CMAKE_COMMAND} -E copy_directory
                        "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIGURATION>/" ${SWIG_OUTPUT_DIR})
