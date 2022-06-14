@@ -6,27 +6,27 @@ from games.game import Game
 
 def transform_state(observation):
     board, player = observation
-    res = np.zeros((3, 3, 2))
+    res = np.zeros((2, 3, 3))
     nBoard = np.array(board * player)
     f1 = nBoard == 1
     f2 = nBoard == -1
-    res[:, :, 0] = f1
-    res[:, :, 1] = f2
+    res[0,:, :] = f1
+    res[1,:, :] = f2
     return np.asarray(res)
 
 def get_board(observation):
     board, _ = observation
-    res = np.zeros((3, 3, 2))
+    res = np.zeros((2, 3, 3))
     f1 = board == 1
     f2 = board == -1
-    res[:, :, 0] = f1
-    res[:, :, 1] = f2
+    res[0,:, :] = f1
+    res[1,:, :] = f2
     return np.asarray(res)
 
 def flip_colors(board):
-    res = np.zeros((3, 3, 2))
-    res[:, :, 0] = board[:, :, 1]
-    res[:, :, 1] = board[:, :, 0]
+    res = np.zeros((2, 3, 3))
+    res[0,:,:] = board[1,:, :]
+    res[1,:, :] = board[0,:, :]
     return res
 
 
@@ -67,7 +67,7 @@ class TicTacToe(Game):
         # sets the policy values of non valid moves to zero
         valid = self.get_valid(state)
 
-        policy = policy[0].reshape((3, 3))
+        policy = policy.reshape((3, 3))
 
         # give invalid move a probability of zero
         policy[valid == 0] = 0

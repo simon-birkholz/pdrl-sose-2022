@@ -29,13 +29,13 @@ class MonteCarloTreeSearch:
 
         # if self.head is None:
         # Init initial node
-        policy, value = self.model.predict(np.array([tObs]), verbose=0)
+        policy, value = self.model.predict(np.array([tObs]))
 
         policy = self.game.correct_policy(policy, current_state)
 
         policy = normalize_pd(policy)
 
-        self.head = Node(self, None, current_state, policy, value[0, 0])
+        self.head = Node(self, None, current_state, policy, value[0])
 
         # self.head.expand()
 
@@ -160,10 +160,10 @@ class Node:
                 child_state, v, done, _ = self.mcts.game.next_step(self.state, s_a)
                 tChildState = self.mcts.game.to_nn_view(child_state)
 
-                child_policy, child_value = self.mcts.model.predict(np.array([tChildState]), verbose=0)
+                child_policy, child_value = self.mcts.model.predict(np.array([tChildState]))
 
                 child_policy = self.mcts.game.correct_policy(child_policy, child_state)
 
                 child_policy = normalize_pd(child_policy)
 
-                self.children[action] = Node(self.mcts, self, child_state, child_policy, child_value[0, 0])
+                self.children[action] = Node(self.mcts, self, child_state, child_policy, child_value[0])

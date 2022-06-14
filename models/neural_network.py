@@ -20,9 +20,9 @@ class ConvBlock(nn.Module):
     A simple convolution block with Batch Normalization and ReLU activation
     """
 
-    def __init__(self, in_channels, out_channels,stride=1):
+    def __init__(self, in_channels, out_channels):
         super(ConvBlock, self).__init__()
-        self.conv = conv3x3(in_channels,out_channels,stride)
+        self.conv = conv3x3(in_channels,out_channels)
         self.bn = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU(inplace=True)
 
@@ -42,10 +42,15 @@ class ConvolutionNetwork(nn.Module):
         self.conv_layers = nn.Sequential(*block_list)
 
         # policy head
+        self.p_conv = nn.Conv2d(num_channels, 1, kernel_size=1, padding=0, bias=False)
+        self.p_bn = nn.BatchNorm2d(num_features=1)
+        self.p_relu = nn.ReLU(inplace=True)
+
         self.p_lin = nn.Linear(n ** 2, action_size)
-        self.softmax = nn.Softmax(dim=1)
+        self.softmax = nn.Softmax(dim=0)
 
         # value Head
+        self.v_lin = nn.Linear(n ** 2, 256)
         self.v_fc = nn.Linear(256, 1)
         self.tanh = nn.Tanh()
 
@@ -54,11 +59,18 @@ class ConvolutionNetwork(nn.Module):
         out = self.conv_layers(x)
 
         # policy head
+        out = self.p_conv(out)
+        out = self.p_bn(out)
+        out = self.p_relu(out)
+
+        out = torch.flatten(out, start_dim=1)
+
         p = self.p_lin(out)
         p = self.softmax(p)
 
         # value head
-        v = self.v_fc(out)
+        v = self.v_lin(out)
+        v = self.v_fc(v)
         v = self.tanh(v)
 
         return p,v
@@ -101,14 +113,15 @@ class NetworkWrapper():
         for epoch in range(0, epochs):
             self.neural_network.train()
 
-            train_data = random.sample(examples, batch_size)
+            ss = min(batch_size, len(examples))
+            train_data = random.sample(examples, ss)
 
             t_boards, t_actions, t_values = zip(*train_data)
 
 
-            b_batch = torch.Tensor(t_boards)
-            p_batch = torch.Tensor(t_actions)
-            v_batch = torch.Tensor(t_values)
+            b_batch = torch.from_numpy(np.array(t_boards).astype(np.float32))
+            p_batch = torch.from_numpy(np.array(t_actions).astype(np.float32))
+            v_batch = torch.from_numpy(np.array(t_values).astype(np.float32))
 
             if self.train_use_gpu:
                 b_batch = b_batch.cuda()
@@ -119,14 +132,17 @@ class NetworkWrapper():
 
             ps, vs = self.neural_network(b_batch)
             loss = self.loss(ps,vs,p_batch,v_batch)
-            loss.backwards()
+            loss.backward()
 
             self.optim.step()
 
     def predict(self, state):
         self.neural_network.eval()
 
-        policy, value = self.neural_network(state)
+        data = np.array(state).astype(np.float32)
+        tens = torch.from_numpy(data)
+
+        policy, value = self.neural_network(tens)
 
         return policy.cpu().detach().numpy() , value.cpu().detach().numpy()
 

@@ -90,7 +90,7 @@ class Worker(threading.Thread):
 
 def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
     history_train_examples = deque([], maxlen=queue_length)
-    global_model = NetworkWrapper(HYPER_PARAMS['lr'],HYPER_PARAMS['l2'], HYPER_PARAMS['n_layers'], HYPER_PARAMS['n_channels'])
+    global_model = NetworkWrapper(**HYPER_PARAMS)
     global_model.save_model('training', 'checkpoint')
 
     Worker.pBar = tqdm(total=n_iter)
@@ -121,9 +121,9 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
         model_candidate = NetworkWrapper(**HYPER_PARAMS)
         model_candidate.load_model('training','checkpoint')
 
+        tData = list(zip(t_boards, t_actions, t_values))
 
-
-        model_candidate.train(all_exp, 10)
+        model_candidate.train(tData, 32,10)
 
         game = TicTacToe()
         c = Colosseum(game, AiPlayer(game, model_candidate, 100), AiPlayer(game, global_model, 100))
