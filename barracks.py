@@ -10,6 +10,8 @@ import os
 import numpy as np
 from sklearn.utils import shuffle
 
+from models.neural_network import NetworkWrapper
+
 from swig.distributed_mcts import MonteCarloTreeSearch
 from swig.distributed_mcts import NeuralNetwork
 
@@ -49,7 +51,7 @@ class Worker(threading.Thread):
         super(Worker, self).__init__()
         self.result_queue = result_queue
         self.global_model = global_model
-        self.local_model = NeuralNetwork('./training/checkpoint',False,10)
+        self.local_model = NeuralNetwork('./training/checkpoint.pt',False,10)
         self.env = TicTacToe()
         self.fallback_agent = RandomPlayer(self.env)
         self.total_episodes = total_episodes
