@@ -4,7 +4,6 @@ import gym
 import boardgame2
 import numpy as np
 
-from mcts import MonteCarloTreeSearch
 from tqdm import tqdm
 from baselines import RandomPlayer
 from ai_player import AiPlayer

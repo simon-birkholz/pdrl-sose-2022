@@ -1,15 +1,12 @@
-from tensorflow import keras
-import tensorflow as tf
+
 import gym
 import boardgame2
 import numpy as np
 
-from mcts import MonteCarloTreeSearch
+
 from tqdm import tqdm
 from games.kinarow import TicTacToe
 from ai_player import AiPlayer
-
-tf.config.set_visible_devices([], 'GPU')
 
 env = TicTacToe()
 agent = AiPlayer(env, 'first-tic-tac-toe-agent', 100)
