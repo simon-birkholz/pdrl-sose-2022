@@ -9,7 +9,7 @@ from games.kinarow import TicTacToe
 from ai_player import AiPlayer
 
 env = TicTacToe()
-agent = AiPlayer(env, 'first-tic-tac-toe-agent', 100)
+agent = AiPlayer(env, 'first-tic-tac-toe-agent',False, 100)
 
 # play against a simple ai agent
 observation = env.reset()

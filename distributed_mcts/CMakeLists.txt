@@ -46,6 +46,8 @@ target_include_directories(mcts_internal  PUBLIC
 add_custom_command(TARGET ${target_name} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_BINARY_DIR}/${target_name}.py" ${SWIG_OUTPUT_DIR} )
 add_custom_command(TARGET ${target_name} POST_BUILD
                    COMMAND ${CMAKE_COMMAND} -E copy_directory
-                       "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIGURATION>/" ${SWIG_OUTPUT_DIR})
+                       "${CMAKE_CURRENT_BINARY_DIR}/Release/" ${SWIG_OUTPUT_DIR})
+# only copy release files because most of the time debug symbols aren't there
+
 include(test)
 add_zero_test(mcts_internal "")

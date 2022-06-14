@@ -79,6 +79,72 @@ class ConvolutionNetwork(nn.Module):
 
         return p, v
 
+# TODO differences with post- and pre-activation
+
+class ResidualBlock(nn.Module):
+    # Residual block
+    def __init__(self, in_channels, out_channels, stride=1):
+        super(ResidualBlock, self).__init__()
+        self.conv1 = conv3x3(in_channels, out_channels, stride)
+        self.bn1 = nn.BatchNorm2d(out_channels)
+        self.relu = nn.ReLU(inplace=True)
+
+        self.conv2 = conv3x3(out_channels, out_channels)
+        self.bn2 = nn.BatchNorm2d(out_channels)
+
+    def forward(self, x):
+        residual = x
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+        out = self.conv2(out)
+        out = self.bn2(out)
+
+        out += residual
+        out = self.relu(out)
+        return out
+
+class ResNet(nn.Module):
+    def __init__(self, num_layers, num_channels, n, action_size):
+        super(ResNet, self).__init__()
+
+        # residual block
+        res_list = [ResidualBlock(2, num_channels)] + [ResidualBlock(num_channels, num_channels) for _ in range(num_layers)]
+        self.res_layers = nn.Sequential(*res_list)
+
+        # policy head
+        self.p_conv = nn.Conv2d(num_channels, 1, kernel_size=1, padding=0, bias=False)
+        self.p_bn = nn.BatchNorm2d(num_features=1)
+        self.p_relu = nn.ReLU(inplace=True)
+
+        self.p_lin = nn.Linear(n ** 2, action_size)
+        self.softmax = nn.Softmax(dim=0)
+
+        # value Head
+        self.v_lin = nn.Linear(n ** 2, 256)
+        self.v_fc = nn.Linear(256, 1)
+        self.tanh = nn.Tanh()
+
+    def forward(self, inputs):
+        # residual block
+        out = self.res_layers(inputs)
+
+        # policy head
+        out = self.p_conv(out)
+        out = self.p_bn(out)
+        out = self.p_relu(out)
+
+        out = torch.flatten(out, start_dim=1)
+
+        p = self.p_lin(out)
+        p = self.softmax(p)
+
+        # value head
+        v = self.v_lin(out)
+        v = self.v_fc(v)
+        v = self.tanh(v)
+
+        return p, v
 
 class DenseBlock(nn.Module):
     """

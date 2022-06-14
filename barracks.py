@@ -143,7 +143,7 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
         model_candidate.train(tData, 32,10)
 
         game = TicTacToe()
-        c = Colosseum(game, AiPlayer(game, model_candidate, 100), AiPlayer(game, global_model, 100))
+        c = Colosseum(game, AiPlayer(game, model_candidate,False, 100), AiPlayer(game, global_model,False, 100))
         print("Now Duel models to find out if better")
         n_wins, g_wins, draws = c.fight(32)
         print(f"New model won {n_wins} games, old model won {g_wins} games.")
