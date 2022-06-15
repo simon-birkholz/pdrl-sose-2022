@@ -3,13 +3,28 @@ import gym
 import boardgame2
 import numpy as np
 
+import os
+os.add_dll_directory('C:\\Program Files\\libtorch\\lib')
+
+from models.neural_network import NetworkWrapper
 
 from tqdm import tqdm
 from games.kinarow import TicTacToe
 from ai_player import AiPlayer
 
+
+HYPER_PARAMS = {
+    'lr' : 0.001,
+    'l2' : 0.0001,
+    'n_layers' : 4,
+    'n_channels' : 64
+}
+
+model = NetworkWrapper(**HYPER_PARAMS)
+model.load_model('training','checkpoint')
+
 env = TicTacToe()
-agent = AiPlayer(env, 'first-tic-tac-toe-agent',False, 100)
+agent = AiPlayer(env,model,False, 10)
 
 # play against a simple ai agent
 observation = env.reset()

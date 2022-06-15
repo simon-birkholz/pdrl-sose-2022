@@ -66,7 +66,7 @@ int KinaRow::get_winner() const
     // no moves available, therefore draw
     return 0;
   }
-  return -1;
+  return -2;
 }
 
 void KinaRow::apply_action(int action)

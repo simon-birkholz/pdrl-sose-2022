@@ -334,8 +334,12 @@ class NetworkWrapper():
 
         data = np.array(state).astype(np.float32)
         tens = torch.from_numpy(data)
+        if self.train_use_gpu:
+            tens = tens.cuda()
 
         policy, value = self.neural_network(tens)
+
+
 
         return policy.cpu().detach().numpy(), value.cpu().detach().numpy()
 

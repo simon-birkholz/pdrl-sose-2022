@@ -2,6 +2,16 @@
 
 #include "neural_network.hpp"
 
+#define ZERO_DEBUG
+
+#ifdef ZERO_DEBUG
+  #define D_MESS(message) \
+    std::cout << message << " at " << __LINE__ << ":" << __FILE__ << std::endl;
+
+
+#else
+  #define D_MESS(message)
+#endif
 Node::Node()
     : parent_(nullptr),
       is_terminal_state_(true),
@@ -160,7 +170,14 @@ void MonteCarloTreeSearch::apply_action(int action)
   }
 }
 
-void MonteCarloTreeSearch::search(search_t game)
+std::vector<double> MonteCarloTreeSearch::search(search_t game)
+{
+  search_internal(game);
+  D_MESS("Completed Search");
+  return get_action_probabilites();
+}
+
+void MonteCarloTreeSearch::search_internal(search_t game)
 {
   std::vector<std::future<void>> futures;
 
@@ -178,11 +195,13 @@ void MonteCarloTreeSearch::search(search_t game)
   for (int i = 0; i < futures.size(); i++)
   {
     futures[i].wait();
+    D_MESS("Collected Thread")
   }
 }
 
 void MonteCarloTreeSearch::simulate(KinaRow game)
 {
+  D_MESS("Stated simulation of Game")
   node_ptr node = root_;
 
   while (true)
@@ -194,15 +213,13 @@ void MonteCarloTreeSearch::simulate(KinaRow game)
 
     auto action = node->select(0, 0);
 
-    //TODO execute move in game wrapper
-
+    game.apply_action(action);
     node = node->children_[action];
   }
 
-  //TODO get game status
   int status = game.get_winner();
   double value = 0;
-  if (status == -1)
+  if (status == -2)
   {
     std::vector<double> action_priors(9, 0);
 
@@ -242,4 +259,5 @@ void MonteCarloTreeSearch::simulate(KinaRow game)
     value = status * game.get_player();
   }
   node->back_propagate(-value);
+  D_MESS("Ended simulation of Game")
 }

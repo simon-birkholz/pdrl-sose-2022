@@ -103,7 +103,7 @@ class Worker(threading.Thread):
 
 def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
     history_train_examples = deque([], maxlen=queue_length)
-    global_model = NetworkWrapper(**HYPER_PARAMS)
+    global_model = NetworkWrapper(**HYPER_PARAMS,train_use_gpu=True,libtorch_use_gpu=True)
     global_model.save_model('training', 'checkpoint')
 
     Worker.pBar = tqdm(total=n_iter)

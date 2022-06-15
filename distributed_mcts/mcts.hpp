@@ -29,12 +29,14 @@ public:
 
   void apply_action(int action);
 
-  void search(search_t game);
+  std::vector<double> search(search_t game);
 
   // Executes one Simulation
   void simulate(KinaRow game);
 
 private:
+
+  void search_internal(search_t);
   unsigned n_sim_;
   node_ptr root_;
   common::thread_pool tpool_;

@@ -7,7 +7,8 @@ NeuralNetwork::NeuralNetwork(
       model_path_(model_path),
       torch_(std::make_shared<torch::jit::script::Module>(
           torch::jit::load(model_path.c_str()))),
-      task_queue_()
+      task_queue_(),
+      abort_(false)
 {
   if (use_gpu_)
   {
@@ -103,7 +104,7 @@ std::future<NeuralNetwork::return_t> NeuralNetwork::evaluate(KinaRow* game)
 
   // assume only tic tac toe for now
   torch::Tensor tmp = torch::from_blob(
-      &board_state.begin(), {1, 1, 3, 3}, torch::dtype(torch::kInt32));
+      &board_state[0], {1, 1, 3, 3}, torch::dtype(torch::kInt32));
 
   // extract feature maps
   torch::Tensor channel0 = tmp.gt(0).toType(torch::kFloat32);

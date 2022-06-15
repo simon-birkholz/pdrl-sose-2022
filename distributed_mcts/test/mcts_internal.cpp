@@ -1,4 +1,6 @@
 
+#define ZERO_DEBUG
+
 #include "mcts.hpp"
 #include "neural_network.hpp"
 
@@ -12,20 +14,31 @@
 namespace fs = std::filesystem;
 int main()
 {
-  std::string model = "./test_script.pt";
+  std::string model =
+      "D:\\dev\\builds\\alpha-zero\\distributed_mcts\\Release\\final.pt";
 
   if (!fs::exists(fs::path(model)))
   {
     std::cout << "Model not found" << std::endl;
     return 0;
   }
-  std::shared_ptr<NeuralNetwork> nn =
-      std::make_shared<NeuralNetwork>(model.c_str(), true, 32);
+  try
+  {
+    std::shared_ptr<NeuralNetwork> nn =
+        std::make_shared<NeuralNetwork>(model.c_str(), true, 32);
 
-  std::shared_ptr<MonteCarloTreeSearch> search =
-      std::make_shared<MonteCarloTreeSearch>(nn.get(), 100);
+    std::cout << "Init: Neural Network" << std::endl;
 
-  std::vector<int> board = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+    std::shared_ptr<MonteCarloTreeSearch> search =
+        std::make_shared<MonteCarloTreeSearch>(nn.get(), 100);
 
-  search->search(std::make_pair(board, 1));
+    std::cout << "Init: Monte Carlo Tree Search" << std::endl;
+    std::vector<int> board = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+    search->search(std::make_pair(board, 1));
+  }
+  catch (const c10::Error& e)
+  {
+    std::cerr << e.what() << std::endl;
+  }
 }
