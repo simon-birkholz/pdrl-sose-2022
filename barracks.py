@@ -11,6 +11,7 @@ import numpy as np
 from sklearn.utils import shuffle
 
 import os
+
 os.add_dll_directory('C:\\Program Files\\libtorch\\lib')
 
 from models.neural_network import NetworkWrapper
@@ -19,7 +20,7 @@ from swig.distributed_mcts import MonteCarloTreeSearch, SearchState
 from swig.distributed_mcts import NeuralNetwork
 
 import mcts as old_mcts
-#from mcts import MonteCarloTreeSearch
+# from mcts import MonteCarloTreeSearch
 
 from tqdm import tqdm
 from baselines import RandomPlayer
@@ -31,10 +32,10 @@ from ai_player import AiPlayer
 import threading
 
 HYPER_PARAMS = {
-    'lr' : 0.001,
-    'l2' : 0.0001,
-    'n_layers' : 4,
-    'n_channels' : 64
+    'lr': 0.001,
+    'l2': 0.0001,
+    'n_layers': 4,
+    'n_channels': 64
 }
 
 
@@ -54,7 +55,7 @@ class Worker(threading.Thread):
         self.result_queue = result_queue
         self.global_model = global_model
         if use_swig:
-            self.local_model = NeuralNetwork('./training/checkpoint.pt',False,10)
+            self.local_model = NeuralNetwork('./training/checkpoint.pt', False, 10)
         self.env = TicTacToe()
         self.fallback_agent = RandomPlayer(self.env)
         self.total_episodes = total_episodes
@@ -78,13 +79,13 @@ class Worker(threading.Thread):
                 # todo return policy vector for learning
                 selected_action = 0
                 if self.use_swig:
-                    selected_action = mcts.search(SearchState(observation[0].flatten().tolist(),observation[1]))
+                    selected_action = mcts.search(SearchState(observation[0].flatten().tolist(), observation[1]))
                 else:
-                    selected_action = mcts.search(observation,self.mcts_sims)
-                if not selected_action > 0:
+                    selected_action = mcts.search(observation, self.mcts_sims)
+                if not selected_action >= 0:
                     # mcts hasn't return valid value, use random baseline as fallback and report warning
                     selected_action = self.fallback_agent.get_action(observation)
-                    print("Warning: Using fallback agent to sample random move")
+                    print(f"Warning: Using fallback agent to sample random move | critical move: {selected_action}")
 
                 # todo hide away because game specific
                 selected = np.unravel_index(selected_action, observation[0].shape)
@@ -103,7 +104,7 @@ class Worker(threading.Thread):
 
 def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
     history_train_examples = deque([], maxlen=queue_length)
-    global_model = NetworkWrapper(**HYPER_PARAMS,train_use_gpu=True,libtorch_use_gpu=True)
+    global_model = NetworkWrapper(**HYPER_PARAMS, train_use_gpu=True, libtorch_use_gpu=True)
     global_model.save_model('training', 'checkpoint')
 
     Worker.pBar = tqdm(total=n_iter)
@@ -133,17 +134,17 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
         t_boards, t_actions, t_values = zip(*all_exp)
         t_boards, t_actions, t_values = shuffle(np.array(t_boards), np.array(t_actions), np.array(t_values))
 
-        global_model.save_model('training','checkpoint')
+        global_model.save_model('training', 'checkpoint')
 
         model_candidate = NetworkWrapper(**HYPER_PARAMS)
-        model_candidate.load_model('training','checkpoint')
+        model_candidate.load_model('training', 'checkpoint')
 
         tData = list(zip(t_boards, t_actions, t_values))
 
-        model_candidate.train(tData, 32,10)
+        model_candidate.train(tData, 32, 10)
 
         game = TicTacToe()
-        c = Colosseum(game, AiPlayer(game, model_candidate,False, 100), AiPlayer(game, global_model,False, 100))
+        c = Colosseum(game, AiPlayer(game, model_candidate, False, 100), AiPlayer(game, global_model, False, 100))
         print("Now Duel models to find out if better")
         n_wins, g_wins, draws = c.fight(32)
         print(f"New model won {n_wins} games, old model won {g_wins} games.")
@@ -157,7 +158,7 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
             except:
                 print("Error on saving new model")
 
-    global_model.save_model(save_dir,'final')
+    global_model.save_model(save_dir, 'final')
 
 
 if __name__ == '__main__':
