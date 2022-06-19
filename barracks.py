@@ -109,12 +109,14 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
 
     Worker.pBar = tqdm(total=n_iter)
 
-    global_eps = int(n_iter / 100)
+    its_per_ep = 20
+
+    global_eps = int(n_iter / its_per_ep)
 
     for i in range(0, global_eps):
 
         Worker.global_episode = 0
-        workers = [Worker(20,
+        workers = [Worker(its_per_ep,
                           100,
                           global_model,
                           history_train_examples) for i in range(threads)]

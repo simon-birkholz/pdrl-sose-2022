@@ -13,13 +13,14 @@ class AiPlayer:
         self.game = game
         self.use_swig = use_swig
         self.sim_count = sim_count
-        if m_name is str:
+        if type(m_name) == str:
             #self.model = NeuralNetwork(m_name,False,10)
             self.model = NetworkWrapper(**kwargs)
             self.model.load_model('training','checkpoint')
         else:
-            self.model = NetworkWrapper(**kwargs)
-            self.model.load_model('training', 'checkpoint')
+            self.model = m_name
+            #self.model = NetworkWrapper(**kwargs)
+            #self.model.load_model('training', 'checkpoint')
         if self.use_swig:
             self.mcts = MonteCarloTreeSearch(self.model, self.sim_count)
         else:
