@@ -24,7 +24,7 @@ model = NetworkWrapper(**HYPER_PARAMS)
 model.load_model('training','checkpoint')
 
 env = TicTacToe()
-agent = AiPlayer(env,model,False, 10)
+agent = AiPlayer(env,model,False, 100)
 
 # play against a simple ai agent
 observation = env.reset()

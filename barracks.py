@@ -54,8 +54,7 @@ class Worker(threading.Thread):
         super(Worker, self).__init__()
         self.result_queue = result_queue
         self.global_model = global_model
-        if use_swig:
-            self.local_model = NeuralNetwork('./training/checkpoint.pt', False, 10)
+
         self.env = TicTacToe()
         self.fallback_agent = RandomPlayer(self.env)
         self.total_episodes = total_episodes
@@ -70,7 +69,7 @@ class Worker(threading.Thread):
             observations = []
             mcts = None
             if self.use_swig:
-                mcts = MonteCarloTreeSearch(self.local_model, self.mcts_sims)
+                mcts = MonteCarloTreeSearch(self.global_model, self.mcts_sims)
             else:
                 mcts = old_mcts.MonteCarloTreeSearch(self.env, self.global_model)
             step_count = 0
@@ -79,7 +78,12 @@ class Worker(threading.Thread):
                 # todo return policy vector for learning
                 selected_action = 0
                 if self.use_swig:
-                    selected_action = mcts.search(SearchState(observation[0].flatten().tolist(), observation[1]))
+                    action_probs = mcts.search(SearchState(observation[0].flatten().tolist(), observation[1]))
+                    selected_action = np.argmax(action_probs)
+
+                    # we need to propagate this the cpp tree
+                    mcts.apply_action(int(selected_action))
+
                 else:
                     selected_action = mcts.search(observation, self.mcts_sims)
                 if not selected_action >= 0:
@@ -103,9 +107,16 @@ class Worker(threading.Thread):
 
 
 def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
+
+    use_swig = True
+
     history_train_examples = deque([], maxlen=queue_length)
-    global_model = NetworkWrapper(**HYPER_PARAMS, train_use_gpu=True, libtorch_use_gpu=True)
+    global_model = NetworkWrapper(**HYPER_PARAMS, train_use_gpu=True, libtorch_use_gpu=False)
     global_model.save_model('training', 'checkpoint')
+
+    swig_wrapper = None
+    if use_swig:
+        swig_wrapper = NeuralNetwork('./training/checkpoint.pt', False, 10)
 
     Worker.pBar = tqdm(total=n_iter)
 
@@ -116,10 +127,11 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
     for i in range(0, global_eps):
 
         Worker.global_episode = 0
+
         workers = [Worker(its_per_ep,
                           100,
-                          global_model,
-                          history_train_examples) for i in range(threads)]
+                          swig_wrapper if use_swig else global_model,
+                          history_train_examples,use_swig) for i in range(threads)]
 
         for _, worker in enumerate(workers):
             worker.start()
@@ -155,6 +167,8 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
             # adapt new model weights
             model_candidate.save_model('training', 'checkpoint')
             global_model.load_model('training', 'checkpoint')
+            if use_swig:
+                swig_wrapper.reload_weights()
             try:
                 global_model.save_model(save_dir, 'checkpoint')
             except:

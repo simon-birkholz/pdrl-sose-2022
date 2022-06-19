@@ -2,7 +2,7 @@
 
 #include "neural_network.hpp"
 
-#define ZERO_DEBUG
+//#define ZERO_DEBUG
 
 #ifdef ZERO_DEBUG
   #define D_MESS(message) \
@@ -197,6 +197,8 @@ void MonteCarloTreeSearch::search_internal(search_t game)
 
   for (int i = 0; i < n_sim_; i++)
   {
+    D_MESS(std::string("Starting Sim " + std::to_string(i) + " of total " + std::to_string(n_sim_)));
+
     KinaRow gWrapper(3, 3, game.first, game.second);
     // lets hope this works
     auto f =
