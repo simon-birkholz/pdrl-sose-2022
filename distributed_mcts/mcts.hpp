@@ -54,10 +54,10 @@ public:
   Node& operator=(const Node& n);
 
 public:
-  bool is_terminal_state() const { return this->is_terminal_state_; }
+  bool is_leaf_node() const { return this->is_leaf_; }
   void back_propagate(double leaf_value);
 
-  unsigned select(double c_puct, double c_virtual_loss);
+  int select(double c_puct, double c_virtual_loss);
   void expand(const std::vector<double>& prior_probabilites);
 
   double upper_confidence_bound() const;
@@ -66,7 +66,7 @@ public:
 private:
   Node* parent_;
   std::map<unsigned, node_ptr> children_;
-  bool is_terminal_state_;
+  bool is_leaf_;
   std::mutex lock_;
   std::atomic<unsigned> visit_count_;
   double prior_;

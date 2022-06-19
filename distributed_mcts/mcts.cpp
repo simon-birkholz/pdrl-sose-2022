@@ -14,7 +14,7 @@
 #endif
 Node::Node()
     : parent_(nullptr),
-      is_terminal_state_(true),
+      is_leaf_(true),
       virtual_loss_(0),
       visit_count_(0),
       prior_(0),
@@ -25,7 +25,7 @@ Node::Node(const Node& node)
 {
   this->parent_ = node.parent_;
   this->children_ = node.children_;
-  this->is_terminal_state_ = node.is_terminal_state_;
+  this->is_leaf_ = node.is_leaf_;
   this->prior_ = node.prior_;
   this->action_value_ = node.action_value_;
 
@@ -36,7 +36,7 @@ Node::Node(const Node& node)
 Node::Node(Node* parent, double prior)
     : parent_(parent),
       children_(),
-      is_terminal_state_(true),
+      is_leaf_(true),
       virtual_loss_(0),
       visit_count_(0),
       action_value_(0),
@@ -47,9 +47,9 @@ void Node::back_propagate(double leaf_value)
 {
   if (parent_ != nullptr)
   {
-    this->parent_->back_propagate(-leaf_value);
+    parent_->back_propagate(-leaf_value);
   }
-  this->virtual_loss_--;
+  virtual_loss_--;
 
   unsigned visit_count = visit_count_.load();
   {
@@ -60,25 +60,38 @@ void Node::back_propagate(double leaf_value)
   visit_count_++;
 }
 
-unsigned Node::select(double c_puct, double c_virtual_loss)
+int Node::select(double c_puct, double c_virtual_loss)
 {
-  double max_ucb = std::numeric_limits<double>::min();
-  unsigned best_action;
+  double max_ucb = std::numeric_limits<double>::lowest();
+  int best_action = -1;
   node_ptr best_node = {};
 
-  for (const auto& child : children_)
+  for (const auto&[action, node] : children_)
   {
-    double ucb = child.second->upper_confidence_bound();
+    // skip empty nodes
+    if (!node) 
+    {
+      continue;
+    }
+
+    double ucb = node->upper_confidence_bound();
     if (ucb > max_ucb)
     {
       max_ucb = ucb;
-      best_action = child.first;
-      best_node = child.second;
+      best_action = action;
+      best_node = node;
     }
   }
 
-  // temporarily apply virtual loss
-  best_node->virtual_loss_++;
+  if (best_node != nullptr)
+  {
+    // temporarily apply virtual loss
+    best_node->virtual_loss_++;
+  }
+  else
+  {
+    D_MESS("Found race condition")
+  }
   return best_action;
 }
 
@@ -86,7 +99,7 @@ void Node::expand(const std::vector<double>& prior_probabilites)
 {
   std::lock_guard<std::mutex> lock(lock_);
 
-  if (!is_terminal_state_)
+  if (!is_leaf_)
   {
     return;
   }
@@ -100,12 +113,13 @@ void Node::expand(const std::vector<double>& prior_probabilites)
     }
   }
 
-  is_terminal_state_ = false;
+  is_leaf_ = false;
 }
 
 double Node::upper_confidence_bound() const
 {
-  double U = prior_ / (1 + visit_count_);
+  const int N = visit_count_.load();
+  double U = prior_ / static_cast<double>(1 + N);
   return action_value_ + U;
 }
 
@@ -118,7 +132,7 @@ Node& Node::operator=(const Node& n)
 
   this->parent_ = n.parent_;
   this->children_ = n.children_;
-  this->is_terminal_state_ = n.is_terminal_state_;
+  this->is_leaf_ = n.is_leaf_;
   this->prior_ = n.prior_;
   this->action_value_ = n.action_value_;
 
@@ -206,15 +220,24 @@ void MonteCarloTreeSearch::simulate(KinaRow game)
 
   while (true)
   {
-    if (node->is_terminal_state())
+    if (node->is_leaf_node())
     {
       break;
     }
 
     auto action = node->select(0, 0);
 
-    game.apply_action(action);
-    node = node->children_[action];
+    if (action >= 0)
+    {
+        // returned valid action
+      game.apply_action(action);
+      node = node->children_[action];
+    }
+    else
+    {
+        // we are at a terminal state for the game
+      break;
+    }
   }
 
   int status = game.get_winner();
