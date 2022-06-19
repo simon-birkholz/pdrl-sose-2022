@@ -1,3 +1,5 @@
+from models.neural_network import NetworkWrapper
+
 from swig.distributed_mcts import MonteCarloTreeSearch, SearchState
 from swig.distributed_mcts import NeuralNetwork
 
@@ -7,14 +9,17 @@ from baselines import RandomPlayer
 
 
 class AiPlayer:
-    def __init__(self, game, m_name, use_swig=False, sim_count=50):
+    def __init__(self,game,m_name,use_swig=False,sim_count=50,**kwargs):
         self.game = game
         self.use_swig = use_swig
         self.sim_count = sim_count
         if m_name is str:
-            self.model = NeuralNetwork(m_name, False, 10)
+            #self.model = NeuralNetwork(m_name,False,10)
+            self.model = NetworkWrapper(**kwargs)
+            self.model.load_model('training','checkpoint')
         else:
-            self.model = m_name
+            self.model = NetworkWrapper(**kwargs)
+            self.model.load_model('training', 'checkpoint')
         if self.use_swig:
             self.mcts = MonteCarloTreeSearch(self.model, self.sim_count)
         else:

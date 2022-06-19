@@ -9,6 +9,12 @@ from baselines import RandomPlayer
 from ai_player import AiPlayer
 from games.kinarow import  TicTacToe
 
+HYPER_PARAMS = {
+    'lr' : 0.001,
+    'l2' : 0.0001,
+    'n_layers' : 4,
+    'n_channels' : 64
+}
 
 class Colosseum:
     def __init__(self, game, player1, player2):
@@ -58,7 +64,7 @@ class Colosseum:
 if __name__ == "__main__":
     env = TicTacToe()
     randomPlayer = RandomPlayer(env)
-    ai_player = AiPlayer(env, 'longer_test')
+    ai_player = AiPlayer(env, 'training',False, 100, **HYPER_PARAMS)
 
     colosseum = Colosseum(env, randomPlayer, ai_player)
 
