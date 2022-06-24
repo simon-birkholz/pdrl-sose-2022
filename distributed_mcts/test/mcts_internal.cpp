@@ -40,7 +40,12 @@ int main()
     std::cout << "Init: Monte Carlo Tree Search" << std::endl;
     std::vector<int> board = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-    search->search(std::make_pair(board, 1));
+    const auto res = search->search(std::make_pair(board, 1));
+
+    for (int i = 0; i < res.size(); i++)
+    {
+      std::cout << res[i] << " ";
+    }
   }
   catch (const c10::Error& e)
   {

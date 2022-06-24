@@ -16,7 +16,7 @@ os.add_dll_directory('C:\\Program Files\\libtorch\\lib')
 
 from models.neural_network import NetworkWrapper
 
-from swig.distributed_mcts import MonteCarloTreeSearch, SearchState
+from swig.distributed_mcts import MonteCarloTreeSearch, SearchState, PII
 from swig.distributed_mcts import NeuralNetwork
 
 import mcts as old_mcts
@@ -61,6 +61,8 @@ class Worker(threading.Thread):
         self.mcts_sims = mcts_sims
         self.experience = []
         self.use_swig = use_swig
+        self.board_shape = (3, 3)
+        self.k = 3
 
     def run(self):
 
@@ -69,7 +71,7 @@ class Worker(threading.Thread):
             observations = []
             mcts = None
             if self.use_swig:
-                mcts = MonteCarloTreeSearch(self.global_model, self.mcts_sims)
+                mcts = MonteCarloTreeSearch(self.global_model, PII(self.board_shape[0],self.board_shape[1]), self.k, self.mcts_sims)
             else:
                 mcts = old_mcts.MonteCarloTreeSearch(self.env, self.global_model)
             step_count = 0
@@ -78,7 +80,7 @@ class Worker(threading.Thread):
                 # todo return policy vector for learning
                 selected_action = 0
                 if self.use_swig:
-                    action_probs = mcts.search(SearchState(observation[0].flatten().tolist(), observation[1]))
+                    action_probs = list(mcts.search(SearchState(observation[0].flatten().tolist(), observation[1])))
                     selected_action = np.argmax(action_probs)
 
                     # we need to propagate this the cpp tree
@@ -107,7 +109,6 @@ class Worker(threading.Thread):
 
 
 def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
-
     use_swig = True
 
     history_train_examples = deque([], maxlen=queue_length)
@@ -131,7 +132,7 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
         workers = [Worker(its_per_ep,
                           100,
                           swig_wrapper if use_swig else global_model,
-                          history_train_examples,use_swig) for i in range(threads)]
+                          history_train_examples, use_swig) for i in range(threads)]
 
         for _, worker in enumerate(workers):
             worker.start()

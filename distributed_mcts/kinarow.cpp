@@ -33,7 +33,7 @@ bool KinaRow::check_won_player(const int player) const
         int count = 0;
         while (count < k_)
         {
-          const int idx = y * width_ + x;
+          const int idx = yy * width_ + xx;
           if (idx >= 0 && idx < board_.size() && board_[idx] == player)
           {
             count++;

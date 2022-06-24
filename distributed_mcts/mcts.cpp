@@ -161,16 +161,16 @@ std::vector<double>
 {
   std::vector<double> result(action_space, 0);
   int visit_sum = 0;
-  for (const auto& child : root_->children_)
+  for (const auto& [action,child] : root_->children_)
   {
-    int visit_count = child.second->visit_count_.load();
-    result[child.first] = visit_count;
+    int visit_count = child->visit_count_.load();
+    result[action] = visit_count;
     visit_sum += visit_count;
   }
 
   for (int i = 0; i < action_space; i++)
   {
-    result[i] /= visit_sum;
+    result[i] /= (double)visit_sum;
   }
   return std::move(result);
 }
@@ -253,19 +253,18 @@ void MonteCarloTreeSearch::simulate(KinaRow game)
       break;
     }
   }
-
+  const auto action_space = board_width_ * board_height_;
   int status = game.get_winner();
   double value = 0;
   if (status == -2)
   {
-    std::vector<double> action_priors(9, 0);
+    std::vector<double> action_priors(action_space, 0);
 
     auto future = network_->evaluate(&game);
     auto result = future.get();
     action_priors = std::move(result.first);
     value = result.second;
 
-    const auto action_space = board_width_ * board_height_;
     // set impossible moves to zero
     std::vector<bool> possible = game.get_valid();
     for (int i = 0; i < action_space; i++)

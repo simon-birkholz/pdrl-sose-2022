@@ -31,7 +31,7 @@
 
   };
   
-%template() std::pair<int,int>;
+%template(PII) std::pair<int,int>;
 %template(IntVector) std::vector<int>;
 %template(DoubleVector) std::vector<double>;
 
