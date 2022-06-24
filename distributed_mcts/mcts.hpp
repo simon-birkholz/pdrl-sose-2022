@@ -26,7 +26,7 @@ public:
   MonteCarloTreeSearch(
       NeuralNetwork* network, std::pair<int, int> board_size, unsigned k, unsigned n_sim);
 
-  std::vector<double> get_action_probabilites(size_t action_space);
+  std::vector<double> get_action_probabilites();
 
   void apply_action(int action);
 

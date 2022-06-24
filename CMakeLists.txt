@@ -25,6 +25,8 @@ message("found python at ${PYTHON_LIBRARIES}")
 
 include_directories(${PYTHON_INCLUDE_PATH})
 
+add_subdirectory(extern)
+
 
 include(test)
 

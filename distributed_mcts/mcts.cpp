@@ -157,8 +157,9 @@ MonteCarloTreeSearch::MonteCarloTreeSearch(
 {}
 
 std::vector<double>
-    MonteCarloTreeSearch::get_action_probabilites(size_t action_space)
+    MonteCarloTreeSearch::get_action_probabilites()
 {
+  const auto action_space = board_width_ * board_height_;
   std::vector<double> result(action_space, 0);
   int visit_sum = 0;
   for (const auto& [action, child] : root_->children_)
@@ -202,7 +203,7 @@ std::vector<double> MonteCarloTreeSearch::search(search_t game)
       "Board size must match initialized values");
   search_internal(game);
   D_MESS("Completed Search");
-  return get_action_probabilites(board_height_ * board_width_);
+  return get_action_probabilites();
 }
 
 void MonteCarloTreeSearch::search_internal(search_t game)

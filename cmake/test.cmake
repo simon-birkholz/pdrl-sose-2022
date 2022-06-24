@@ -4,8 +4,8 @@ set(name test_${namer})
 	set(cpp test/${namer}.cpp)
 	add_executable(${name} ${cpp})
 	
-	#set( _deps extern_catch2 ${libs}) 
-	target_link_libraries(${name} ${namer})
+	set( _deps extern_catch2 ${libs}) 
+	target_link_libraries(${name} ${_deps})
 	message("test: ${name} ${namer} ${_deps}")
 	if (UNIX)
 		#i dont know why this is needed
@@ -21,5 +21,6 @@ set(name test_${namer})
 		RUNTIME_OUTPUT_DIRECTORY ${output_dir}
 		VS_DEBUGGER_WORKING_DIRECTORY "${EXECUTABLE_OUTPUT_PATH}/$<CONFIG>"
 		)
+	add_test(NAME ${name} COMMAND ${name} WORKING_DIRECTORY ${output_dir} )
 	
 endfunction()

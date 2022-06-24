@@ -50,4 +50,5 @@ add_custom_command(TARGET ${target_name} POST_BUILD
 # only copy release files because most of the time debug symbols aren't there
 
 include(test)
-add_zero_test(mcts_internal "")
+add_zero_test(mcts_internal "mcts_internal")
+add_zero_test(kinarow_get_winner "mcts_internal")

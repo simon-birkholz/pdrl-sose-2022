@@ -24,7 +24,7 @@ import mcts as old_mcts
 
 from tqdm import tqdm
 from baselines import RandomPlayer
-from games.kinarow import TicTacToe
+from games.kinarow import TicTacToe, KInARow
 
 from colosseum import Colosseum
 from ai_player import AiPlayer
@@ -34,10 +34,10 @@ import threading
 HYPER_PARAMS = {
     'lr': 0.001,
     'l2': 0.0001,
-    'n_layers': 12,
-    'n_channels': 512,
-    'arch' : 'resnet',
-    'n' : 8
+    'n_layers': 4,
+    'n_channels': 256,
+    'arch' : 'conv',
+    'n' : 3
 }
 
 
@@ -57,14 +57,14 @@ class Worker(threading.Thread):
         self.result_queue = result_queue
         self.global_model = global_model
 
-        self.env = TicTacToe()
-        self.fallback_agent = RandomPlayer(self.env)
         self.total_episodes = total_episodes
         self.mcts_sims = mcts_sims
         self.experience = []
         self.use_swig = use_swig
-        self.board_shape = (8, 8)
-        self.k = 4
+        self.board_shape = (3, 3)
+        self.k = 3
+        self.env = KInARow(self.board_shape,self.k)
+        self.fallback_agent = RandomPlayer(self.env)
 
     def run(self):
 
