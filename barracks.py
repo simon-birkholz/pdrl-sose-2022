@@ -37,12 +37,12 @@ HYPER_PARAMS = {
     'n_layers': 4,
     'n_channels': 256,
     'arch' : 'conv',
-    'n' : 3
+    'n' : 8
 }
 
 
-def expand_action(action):
-    v = np.zeros(9)
+def expand_action(action,action_space):
+    v = np.zeros(action_space)
     v[action] = 1
     return v
 
@@ -61,10 +61,11 @@ class Worker(threading.Thread):
         self.mcts_sims = mcts_sims
         self.experience = []
         self.use_swig = use_swig
-        self.board_shape = (3, 3)
-        self.k = 3
+        self.board_shape = (8, 8)
+        self.k = 4
         self.env = KInARow(self.board_shape,self.k)
         self.fallback_agent = RandomPlayer(self.env)
+        self.action_space = 64
 
     def run(self):
 
@@ -107,7 +108,7 @@ class Worker(threading.Thread):
                 observations.append([observation, selected_action, None])
                 observation, reward, done, info = self.env.step(selected)
                 if done:
-                    exp = [(self.env.to_nn_view(x[0]), expand_action(x[1]), (-1) ** (x[0][1] != reward)) for x in
+                    exp = [(self.env.to_nn_view(x[0]), expand_action(x[1], self.action_space), (-1) ** (x[0][1] != reward)) for x in
                            observations]
                     self.experience.append(exp)
 
@@ -119,14 +120,15 @@ class Worker(threading.Thread):
 
 def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
     use_swig = True
+    libtorch_use_gpu=False
 
     history_train_examples = deque([], maxlen=queue_length)
-    global_model = NetworkWrapper(**HYPER_PARAMS, train_use_gpu=True, libtorch_use_gpu=True)
+    global_model = NetworkWrapper(**HYPER_PARAMS, train_use_gpu=True, libtorch_use_gpu=libtorch_use_gpu)
     global_model.save_model('training', 'checkpoint')
 
     swig_wrapper = None
     if use_swig:
-        swig_wrapper = NeuralNetwork('./training/checkpoint.pt', False, 10)
+        swig_wrapper = NeuralNetwork('./training/checkpoint.pt', libtorch_use_gpu, 10)
 
     Worker.pBar = tqdm(total=n_iter)
 

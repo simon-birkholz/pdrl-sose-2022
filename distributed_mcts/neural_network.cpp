@@ -1,5 +1,15 @@
 #include "neural_network.hpp"
 
+//#define ZERO_DEBUG
+
+#ifdef ZERO_DEBUG
+  #define D_MESS(message) \
+    std::cout << message << " at " << __LINE__ << ":" << __FILE__ << std::endl;
+#else
+  #define D_MESS(message)
+#endif
+
+
 NeuralNetwork::NeuralNetwork(
     std::string model_path, bool use_gpu, unsigned batch_size)
     : use_gpu_(use_gpu),
@@ -52,6 +62,7 @@ void NeuralNetwork::intern()
 
   if (states.size() == 0)
     return;
+  D_MESS("Collected batch of size " + states.size())
 
 #if ZERO_USE_CUDA
   std::vector<torch::jit::IValue> to_network{
@@ -60,7 +71,9 @@ void NeuralNetwork::intern()
   std::vector<torch::jit::IValue> to_network{torch::cat(states, 0)};
 #endif
 
+  D_MESS("Sending to torch " + states.size())
   auto res = torch_->forward(to_network).toTuple();
+  D_MESS("Recieved from torch " + states.size())
 
   torch::Tensor p_Batch =
       res->elements()[0].toTensor().exp().toType(torch::kFloat32).to(at::kCPU);
@@ -103,6 +116,9 @@ std::future<NeuralNetwork::return_t> NeuralNetwork::evaluate(KinaRow* game)
   std::vector<int> board_state = game->get_board();
 
   const auto [width, height] = game->get_board_size();
+
+  assert(
+      width * height == board_state.size() && "Detected invalid game wrapper");
 
   // assume only tic tac toe for now
   torch::Tensor tmp = torch::from_blob(

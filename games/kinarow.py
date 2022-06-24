@@ -6,9 +6,9 @@ from games.game import Game
 
 # wrapper classes arond the kinarow class for the boardgame2 enviroment
 
-def transform_state(observation):
+def transform_state(observation,n):
     board, player = observation
-    res = np.zeros((2, 3, 3))
+    res = np.zeros((2, n, n))
     nBoard = np.array(board * player)
     f1 = nBoard == 1
     f2 = nBoard == -1
@@ -17,9 +17,9 @@ def transform_state(observation):
     return np.asarray(res)
 
 
-def get_board(observation):
+def get_board(observation,n):
     board, _ = observation
-    res = np.zeros((2, 3, 3))
+    res = np.zeros((2, n, n))
     f1 = board == 1
     f2 = board == -1
     res[0, :, :] = f1
@@ -27,8 +27,8 @@ def get_board(observation):
     return np.asarray(res)
 
 
-def flip_colors(board):
-    res = np.zeros((2, 3, 3))
+def flip_colors(board,n):
+    res = np.zeros((2, n, n))
     res[0, :, :] = board[1, :, :]
     res[1, :, :] = board[0, :, :]
     return res
@@ -63,7 +63,7 @@ class TicTacToe(Game):
 
     def to_nn_view(self, state):
         # transforms the state of the game if the player happens to be -1
-        return transform_state(state)
+        return transform_state(state,3)
 
     def correct_policy(self, policy, state):
         # sets the policy values of non valid moves to zero
@@ -85,6 +85,8 @@ class KInARow(Game):
 
     def __init__(self, board_shape, k, silent=True):
         self.env = gym.make('KInARow-v0', board_shape=board_shape, target_length=k)
+        self.board_shape = board_shape
+        self.k = k
 
         if not silent:
             print('observation space = {}'.format(self.env.observation_space))
@@ -117,14 +119,14 @@ class KInARow(Game):
 
     def to_nn_view(self, state):
         # transforms the state of the game if the player happens to be -1
-        return transform_state(state)
+        return transform_state(state, self.board_shape[0])
 
 
     def correct_policy(self, policy, state):
         # sets the policy values of non valid moves to zero
         valid = self.get_valid(state)
 
-        policy = policy.reshape((3, 3))
+        policy = policy.reshape(self.board_shape)
 
         # give invalid move a probability of zero
         policy[valid == 0] = 0

@@ -21,6 +21,8 @@ Node::Node()
       action_value_(0)
 {}
 
+constexpr double eps = 1e-6;
+
 Node::Node(const Node& node)
 {
   this->parent_ = node.parent_;
@@ -106,8 +108,7 @@ void Node::expand(const std::vector<double>& prior_probabilites)
 
   for (int i = 0; i < prior_probabilites.size(); i++)
   {
-    // TODO add epsilon
-    if (prior_probabilites[i] > 0)
+    if (prior_probabilites[i] > eps)
     {
       children_[i] = std::make_shared<Node>(this, prior_probabilites[i]);
     }
@@ -156,8 +157,7 @@ MonteCarloTreeSearch::MonteCarloTreeSearch(
       k_(k)
 {}
 
-std::vector<double>
-    MonteCarloTreeSearch::get_action_probabilites()
+std::vector<double> MonteCarloTreeSearch::get_action_probabilites()
 {
   const auto action_space = board_width_ * board_height_;
   std::vector<double> result(action_space, 0);
@@ -175,7 +175,7 @@ std::vector<double>
   }
   for (int i = 0; i < action_space; i++)
   {
-    result[i] /= (double)visit_sum;
+    result[i] /= static_cast<double>(visit_sum);
   }
   return std::move(result);
 }
@@ -213,7 +213,7 @@ void MonteCarloTreeSearch::search_internal(search_t game)
   for (int i = 0; i < n_sim_; i++)
   {
     D_MESS(std::string(
-        "Starting Sim " + std::to_string(i) + " of total " +
+        "Querying Sim " + std::to_string(i) + " of total " +
         std::to_string(n_sim_)));
 
     KinaRow gWrapper(board_height_, board_width_, k_, game.first, game.second);
@@ -258,20 +258,28 @@ void MonteCarloTreeSearch::simulate(KinaRow game)
       break;
     }
   }
+  D_MESS("Selected Node")
   const auto action_space = board_width_ * board_height_;
   int status = game.get_winner();
   double value = 0;
   if (status == -2)
   {
-    std::vector<double> action_priors(action_space, 0);
-
+    D_MESS("Sending to Neural Network")
     auto future = network_->evaluate(&game);
     auto result = future.get();
-    action_priors = std::move(result.first);
+    D_MESS("Recieved from Neural Network")
+    std::vector<double> action_priors = std::move(result.first);
+    assert(
+        action_priors.size() == action_space &&
+        "Detected invalid return from neural network");
     value = result.second;
 
     // set impossible moves to zero
     std::vector<bool> possible = game.get_valid();
+
+    assert(
+        possible.size() == action_priors.size() &&
+        "Detected invalid game wrapper");
     for (int i = 0; i < action_space; i++)
     {
       if (!possible[i])
@@ -291,14 +299,17 @@ void MonteCarloTreeSearch::simulate(KinaRow game)
       action_priors[i] /= p_sum;
     }
 
+    assert(p_sum > eps && "All actions are invalid");
     // TODO workaround if all actions invalid
 
+    D_MESS("Expanding Node");
     node->expand(action_priors);
   }
   else
   {
     value = status * game.get_player();
   }
+  D_MESS("Beginning Backpropagate");
   node->back_propagate(-value);
   D_MESS("Ended simulation of Game")
 }
