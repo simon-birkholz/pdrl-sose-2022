@@ -34,8 +34,10 @@ import threading
 HYPER_PARAMS = {
     'lr': 0.001,
     'l2': 0.0001,
-    'n_layers': 4,
-    'n_channels': 64
+    'n_layers': 12,
+    'n_channels': 512,
+    'arch' : 'resnet',
+    'n' : 8
 }
 
 
@@ -61,8 +63,8 @@ class Worker(threading.Thread):
         self.mcts_sims = mcts_sims
         self.experience = []
         self.use_swig = use_swig
-        self.board_shape = (3, 3)
-        self.k = 3
+        self.board_shape = (8, 8)
+        self.k = 4
 
     def run(self):
 
@@ -119,7 +121,7 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
     use_swig = True
 
     history_train_examples = deque([], maxlen=queue_length)
-    global_model = NetworkWrapper(**HYPER_PARAMS, train_use_gpu=True, libtorch_use_gpu=False)
+    global_model = NetworkWrapper(**HYPER_PARAMS, train_use_gpu=True, libtorch_use_gpu=True)
     global_model.save_model('training', 'checkpoint')
 
     swig_wrapper = None

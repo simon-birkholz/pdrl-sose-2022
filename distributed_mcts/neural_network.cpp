@@ -102,9 +102,11 @@ std::future<NeuralNetwork::return_t> NeuralNetwork::evaluate(KinaRow* game)
 {
   std::vector<int> board_state = game->get_board();
 
+  const auto [width, height] = game->get_board_size();
+
   // assume only tic tac toe for now
   torch::Tensor tmp = torch::from_blob(
-      &board_state[0], {1, 1, 3, 3}, torch::dtype(torch::kInt32));
+      &board_state[0], {1, 1, width, height}, torch::dtype(torch::kInt32));
 
   // extract feature maps
   torch::Tensor channel0 = tmp.gt(0).toType(torch::kFloat32);

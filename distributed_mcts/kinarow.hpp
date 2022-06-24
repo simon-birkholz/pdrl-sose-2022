@@ -18,6 +18,11 @@ public:
   int get_winner() const;
   int get_player() const { return player_; }
 
+  std::pair<int, int> get_board_size() const
+  {
+    return std::make_pair(width_, height_);
+  }
+
   void apply_action(int action);
 
   std::vector<int> get_board() const { return board_; }

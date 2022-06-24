@@ -15,12 +15,12 @@ namespace fs = std::filesystem;
 int main()
 {
   std::string model =
-      "D:\\dev\\builds\\alpha-zero\\distributed_mcts\\Release\\final.pt";
+      "D:\\dev\\builds\\alpha-zero\\distributed_mcts\\Debug\\8x8.pt";
 
-  const int board_width = 3;
-  const int board_height = 3;
+  const int board_width = 8;
+  const int board_height = 8;
   const auto board_shape = std::make_pair(board_width, board_height);
-  const int k = 3;
+  const int k = 4;
 
   if (!fs::exists(fs::path(model)))
   {
@@ -38,7 +38,7 @@ int main()
         std::make_shared<MonteCarloTreeSearch>(nn.get(), board_shape, k, 100);
 
     std::cout << "Init: Monte Carlo Tree Search" << std::endl;
-    std::vector<int> board = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+    std::vector<int> board(board_width * board_height, 0);
 
     const auto res = search->search(std::make_pair(board, 1));
 

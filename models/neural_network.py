@@ -109,7 +109,7 @@ class ResNet(nn.Module):
         super(ResNet, self).__init__()
 
         # residual block
-        res_list = [ResidualBlock(2, num_channels)] + [ResidualBlock(num_channels, num_channels) for _ in range(num_layers)]
+        res_list = [ConvBlock(2, num_channels)] + [ResidualBlock(num_channels, num_channels) for _ in range(num_layers)]
         self.res_layers = nn.Sequential(*res_list)
 
         # policy head
@@ -157,10 +157,10 @@ class DenseBlock(nn.Module):
         self.relu = nn.ReLU(inplace=True)
 
         self.conv1 = conv3x3(in_channels, out_channels)
-        self.conv2 = conv3x3(in_channels, out_channels)
-        self.conv3 = conv3x3(in_channels * 2, out_channels)
-        self.conv4 = conv3x3(in_channels * 3, out_channels)
-        self.conv5 = conv3x3(in_channels * 4, out_channels)
+        self.conv2 = conv3x3(out_channels, out_channels)
+        self.conv3 = conv3x3(out_channels * 2, out_channels)
+        self.conv4 = conv3x3(out_channels * 3, out_channels)
+        self.conv5 = conv3x3(out_channels * 4, out_channels)
 
     def forward(self, x):
         out = self.bn(x)
@@ -214,18 +214,11 @@ class DenseNetwork(nn.Module):
     def __init__(self, num_layers, num_channels, n, action_size):
         super(DenseNetwork, self).__init__()
 
-        self.conv = conv3x3(num_channels, num_channels)
+        self.conv = conv3x3(num_layers, num_channels)
 
-        self.denseblock1 = _make_dense_block(DenseBlock, num_channels)
-        self.denseblock2 = _make_dense_block(DenseBlock, num_channels * 2)
-        self.denseblock3 = _make_dense_block(DenseBlock, num_channels * 2)
-
-        self.transitionLayer1 = _make_transition_layer(TransitionLayer, in_channels=num_channels,
-                                                       out_channels=num_channels)
-        self.transitionLayer1 = _make_transition_layer(TransitionLayer, in_channels=num_channels / 2,
-                                                       out_channels=num_channels / 2)
-        self.transitionLayer1 = _make_transition_layer(TransitionLayer, in_channels=num_channels / 4,
-                                                       out_channels=num_channels / 4)
+        # residual block
+        dense_list = [DenseBlock(num_channels, num_channels) for _ in range(num_layers)]
+        self.dense_layers = nn.Sequential(*dense_list)
 
         # policy head
         self.p_conv = nn.Conv2d(num_channels, 1, kernel_size=1, padding=0, bias=False)
@@ -243,14 +236,92 @@ class DenseNetwork(nn.Module):
     def forward(self, x):
         out = self.relu(self.conv(x))
 
-        out = self.denseblock1(out)
-        out = self.transitionLayer1(out)
+        out = self.dense_layers(out)
 
-        out = self.denseblock2(out)
-        out = self.transitionLayer2(out)
+        # policy head
+        out = self.p_conv(out)
+        out = self.p_bn(out)
+        out = self.p_relu(out)
 
-        out = self.denseblock3(out)
-        out = self.transitionLayer3(out)
+        out = torch.flatten(out, start_dim=1)
+
+        p = self.p_lin(out)
+        p = self.softmax(p)
+
+        # value head
+        v = self.v_lin(out)
+        v = self.v_fc(v)
+        v = self.tanh(v)
+
+        return p, v
+
+class SE_Block(nn.Module):
+        def __init__(self, c, r=16):
+            super().__init__()
+            self.squeeze = nn.AdaptiveAvgPool2d(1)
+            self.excitation = nn.Sequential(
+                nn.Linear(c, c // r, bias=False),
+                nn.ReLU(inplace=True),
+                nn.Linear(c // r, c, bias=False),
+                nn.Sigmoid()
+            )
+
+        def forward(self, x):
+            bs, c, _, _ = x.shape
+            y = self.squeeze(x).view(bs, c)
+            y = self.excitation(y).view(bs, c, 1, 1)
+            return x * y.expand_as(x)
+
+class SEResBlock(nn.Module):
+    def __init__(self, in_channels, out_channels,
+                 *, reduction=16):
+        super(SEResBlock, self).__init__()
+        self.conv1 = conv3x3(in_channels, out_channels)
+        self.bn1 = nn.BatchNorm2d(out_channels)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = conv3x3(out_channels, out_channels, 1)
+        self.bn2 = nn.BatchNorm2d(out_channels)
+        self.se = SE_Block(out_channels, reduction)
+
+    def forward(self, x):
+        residual = x
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out = self.se(out)
+
+        out += residual
+        out = self.relu(out)
+
+        return out
+
+class SENet(nn.Module):
+    def __init__(self, num_layers, num_channels, n, action_size):
+        super(SENet, self).__init__()
+
+        # se residual block
+        res_list = [SEResBlock(2, num_channels)] + [SEResBlock(num_channels, num_channels) for _ in range(num_layers)]
+        self.res_layers = nn.Sequential(*res_list)
+
+        # policy head
+        self.p_conv = nn.Conv2d(num_channels, 1, kernel_size=1, padding=0, bias=False)
+        self.p_bn = nn.BatchNorm2d(num_features=1)
+        self.p_relu = nn.ReLU(inplace=True)
+
+        self.p_lin = nn.Linear(n ** 2, action_size)
+        self.softmax = nn.Softmax(dim=0)
+
+        # value Head
+        self.v_lin = nn.Linear(n ** 2, 256)
+        self.v_fc = nn.Linear(256, 1)
+        self.tanh = nn.Tanh()
+
+    def forward(self, inputs):
+        # residual block
+        out = self.res_layers(inputs)
 
         # policy head
         out = self.p_conv(out)
@@ -284,19 +355,28 @@ class AlphaZeroLoss(nn.Module):
 
 class NetworkWrapper():
 
-    def __init__(self, lr, l2, n_layers, n_channels, train_use_gpu=False, libtorch_use_gpu=False):
+    def __init__(self,n, lr, l2, n_layers, n_channels,arch = 'conv', train_use_gpu=False, libtorch_use_gpu=False):
 
         self.num_channels = n_channels
         self.num_layers = n_layers
 
         self.lr = lr
         self.l2 = l2
-        self.n = 3
+        self.n = n
 
         self.train_use_gpu = train_use_gpu
         self.libtorch_use_gpu = libtorch_use_gpu
 
-        self.neural_network = ConvolutionNetwork(self.num_layers, self.num_channels, self.n, self.n ** 2)
+        if arch == 'conv':
+            self.neural_network = ConvolutionNetwork(self.num_layers, self.num_channels, self.n, self.n ** 2)
+        elif arch == 'resnet':
+            self.neural_network = ResNet(self.num_layers, self.num_channels, self.n, self.n ** 2)
+        elif arch == 'densenet':
+            self.neural_network = DenseNetwork(self.num_layers, self.num_channels, self.n, self.n ** 2)
+        elif arch == 'senet':
+            self.neural_network = DenseNetwork(self.num_layers, self.num_channels, self.n, self.n ** 2)
+
+
         if self.train_use_gpu:
             self.neural_network.cuda()
 
