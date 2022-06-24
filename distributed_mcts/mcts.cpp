@@ -161,13 +161,17 @@ std::vector<double>
 {
   std::vector<double> result(action_space, 0);
   int visit_sum = 0;
-  for (const auto& [action,child] : root_->children_)
+  for (const auto& [action, child] : root_->children_)
   {
     int visit_count = child->visit_count_.load();
     result[action] = visit_count;
     visit_sum += visit_count;
   }
 
+  if (visit_sum == 0)
+  {
+    std::cerr << "Invalid state for mcts" << std::endl;
+  }
   for (int i = 0; i < action_space; i++)
   {
     result[i] /= (double)visit_sum;

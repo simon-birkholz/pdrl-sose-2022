@@ -3,6 +3,8 @@ import numpy as np
 
 def normalize_pd(pd):
     whole = sum(pd)
+    if whole == 0:
+        raise ValueError("Invalid policy normalization")
     new_pd = np.zeros(len(pd))
     for i in range(0, len(pd)):
         new_pd[i] = pd[i] / whole
@@ -158,12 +160,14 @@ class Node:
                 s_a = np.unravel_index(action, self.state[0].shape)
 
                 child_state, v, done, _ = self.mcts.game.next_step(self.state, s_a)
+
                 tChildState = self.mcts.game.to_nn_view(child_state)
 
                 child_policy, child_value = self.mcts.model.predict(np.array([tChildState]))
-
-                child_policy = self.mcts.game.correct_policy(child_policy, child_state)
-
-                child_policy = normalize_pd(child_policy)
-
-                self.children[action] = Node(self.mcts, self, child_state, child_policy, child_value[0])
+                if not done:
+                    child_policy = self.mcts.game.correct_policy(child_policy, child_state)
+                    child_policy = normalize_pd(child_policy)
+                    self.children[action] = Node(self.mcts, self, child_state, child_policy, child_value[0])
+                else:
+                    inv_policy = np.zeros(child_policy.shape)
+                    self.children[action] = Node(self.mcts, self, child_state, inv_policy, child_value[0])

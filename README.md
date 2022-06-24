@@ -16,7 +16,8 @@ An implementation for the AlphaZero Algorihm.
 
 ## Known Issues
 
-- Ai agents often returns invalid move, and a random baseline has to be used as fallback
+- ~~Ai agents often returns invalid move, and a random baseline has to be used as fallback~~
+- Cpp wrapper fails sometimes without notices
 
 ## Literature
 

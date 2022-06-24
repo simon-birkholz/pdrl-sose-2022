@@ -170,7 +170,7 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
         print("Now Duel models to find out if better")
         n_wins, g_wins, draws = c.fight(32)
         print(f"New model won {n_wins} games, old model won {g_wins} games.")
-        if n_wins > 16:
+        if n_wins  > 16:
             print("Adapting weights")
             # adapt new model weights
             model_candidate.save_model('training', 'checkpoint')
