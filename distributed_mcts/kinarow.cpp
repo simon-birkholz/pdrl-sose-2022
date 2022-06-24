@@ -4,40 +4,57 @@
 #include <numeric>
 
 KinaRow::KinaRow(
-    int boardHeight, int boardWidth, std::vector<int> board, int curr_player)
+    int boardHeight,
+    int boardWidth,
+    int k,
+    std::vector<int> board,
+    int curr_player)
     : height_(boardHeight),
       width_(boardWidth),
       board_(board),
       player_(curr_player),
+      k_(k),
       action_space_(boardHeight * boardWidth)
 {}
 
-bool check_won_player(const std::vector<int> board, const int player)
+bool KinaRow::check_won_player(const int player) const
 {
-  for (int i = 0; i < 3; i++)
+  for (int y = 0; y < height_; y++)
   {
-    // horizontal and vertically
-    if (board[i * 3] == player && board[i * 3 + 1] == player &&
-        board[i * 3 + 2] == player)
+    for (int x = 0; x < width_; x++)
     {
-      return true;
-    }
-    if (board[i] == player && board[3 + i] == player && board[6 + i] == player)
-    {
-      return true;
-    }
-  }
+      const std::vector<std::pair<int, int>> directions = {
+          {1, -1}, {1, 0}, {1, 1}, {0, 1}};
 
-  if (board[0] == player && board[4] == player && board[8] == player)
-  {
-    return true;
-  }
-  if (board[6] == player && board[4] == player && board[2] == player)
-  {
-    return true;
+      for (const auto &[dx, dy] : directions)
+      {
+        int xx = x;
+        int yy = y;
+        int count = 0;
+        while (count < k_)
+        {
+          const int idx = y * width_ + x;
+          if (idx >= 0 && idx < board_.size() && board_[idx] == player)
+          {
+            count++;
+            xx += dx;
+            yy += dy;
+          }
+          else
+          {
+            break;
+          }
+        }
+        if (count >= k_)
+        {
+          return true;
+        }
+      }
+    }
   }
   return false;
 }
+
 
 std::vector<bool> KinaRow::get_valid() const
 {
@@ -51,11 +68,11 @@ std::vector<bool> KinaRow::get_valid() const
 
 int KinaRow::get_winner() const
 {
-  if (check_won_player(board_, 1))
+  if (check_won_player(1))
   {
     return 1;
   }
-  if (check_won_player(board_, -1))
+  if (check_won_player(-1))
   {
     return -1;
   }
@@ -66,6 +83,7 @@ int KinaRow::get_winner() const
     // no moves available, therefore draw
     return 0;
   }
+  // return -2 if game not ended
   return -2;
 }
 

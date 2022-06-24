@@ -66,10 +66,10 @@ int Node::select(double c_puct, double c_virtual_loss)
   int best_action = -1;
   node_ptr best_node = {};
 
-  for (const auto&[action, node] : children_)
+  for (const auto& [action, node] : children_)
   {
     // skip empty nodes
-    if (!node) 
+    if (!node)
     {
       continue;
     }
@@ -143,16 +143,23 @@ Node& Node::operator=(const Node& n)
 }
 
 MonteCarloTreeSearch::MonteCarloTreeSearch(
-    NeuralNetwork* network, unsigned n_sim)
+    NeuralNetwork* network,
+    std::pair<int, int> board_size,
+    unsigned k,
+    unsigned n_sim)
     : n_sim_(n_sim),
       root_(std::make_shared<Node>(nullptr, 1)),
       tpool_(1),
-      network_(network)
+      network_(network),
+      board_width_(board_size.first),
+      board_height_(board_size.second),
+      k_(k)
 {}
 
-std::vector<double> MonteCarloTreeSearch::get_action_probabilites()
+std::vector<double>
+    MonteCarloTreeSearch::get_action_probabilites(size_t action_space)
 {
-  std::vector<double> result(9, 0);
+  std::vector<double> result(action_space, 0);
   int visit_sum = 0;
   for (const auto& child : root_->children_)
   {
@@ -161,7 +168,7 @@ std::vector<double> MonteCarloTreeSearch::get_action_probabilites()
     visit_sum += visit_count;
   }
 
-  for (int i = 0; i < 9; i++)
+  for (int i = 0; i < action_space; i++)
   {
     result[i] /= visit_sum;
   }
@@ -186,9 +193,12 @@ void MonteCarloTreeSearch::apply_action(int action)
 
 std::vector<double> MonteCarloTreeSearch::search(search_t game)
 {
+  assert(
+      board_height_ * board_width_ == game.first.size() &&
+      "Board size must match initialized values");
   search_internal(game);
   D_MESS("Completed Search");
-  return get_action_probabilites();
+  return get_action_probabilites(board_height_ * board_width_);
 }
 
 void MonteCarloTreeSearch::search_internal(search_t game)
@@ -197,9 +207,11 @@ void MonteCarloTreeSearch::search_internal(search_t game)
 
   for (int i = 0; i < n_sim_; i++)
   {
-    D_MESS(std::string("Starting Sim " + std::to_string(i) + " of total " + std::to_string(n_sim_)));
+    D_MESS(std::string(
+        "Starting Sim " + std::to_string(i) + " of total " +
+        std::to_string(n_sim_)));
 
-    KinaRow gWrapper(3, 3, game.first, game.second);
+    KinaRow gWrapper(board_height_, board_width_, k_, game.first, game.second);
     // lets hope this works
     auto f =
         std::bind(&MonteCarloTreeSearch::simulate, this, std::placeholders::_1);
@@ -231,13 +243,13 @@ void MonteCarloTreeSearch::simulate(KinaRow game)
 
     if (action >= 0)
     {
-        // returned valid action
+      // returned valid action
       game.apply_action(action);
       node = node->children_[action];
     }
     else
     {
-        // we are at a terminal state for the game
+      // we are at a terminal state for the game
       break;
     }
   }
@@ -253,10 +265,10 @@ void MonteCarloTreeSearch::simulate(KinaRow game)
     action_priors = std::move(result.first);
     value = result.second;
 
-
+    const auto action_space = board_width_ * board_height_;
     // set impossible moves to zero
     std::vector<bool> possible = game.get_valid();
-    for (int i = 0; i < 9; i++)
+    for (int i = 0; i < action_space; i++)
     {
       if (!possible[i])
       {
@@ -266,11 +278,11 @@ void MonteCarloTreeSearch::simulate(KinaRow game)
 
     // probability normalization
     double p_sum = 0;
-    for (int i = 0; i < 9; i++)
+    for (int i = 0; i < action_space; i++)
     {
       p_sum += action_priors[i];
     }
-    for (int i = 0; i < 9; i++)
+    for (int i = 0; i < action_space; i++)
     {
       action_priors[i] /= p_sum;
     }

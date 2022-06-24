@@ -23,9 +23,10 @@ class MonteCarloTreeSearch
 public:
   // smart pointer too much headdache
 
-  MonteCarloTreeSearch(NeuralNetwork* network, unsigned n_sim);
+  MonteCarloTreeSearch(
+      NeuralNetwork* network, std::pair<int, int> board_size, unsigned k, unsigned n_sim);
 
-  std::vector<double> get_action_probabilites();
+  std::vector<double> get_action_probabilites(size_t action_space);
 
   void apply_action(int action);
 
@@ -35,12 +36,14 @@ public:
   void simulate(KinaRow game);
 
 private:
-
   void search_internal(search_t);
   unsigned n_sim_;
+  unsigned k_;
   node_ptr root_;
   common::thread_pool tpool_;
   NeuralNetwork* network_;
+  unsigned board_width_;
+  unsigned board_height_;
 };
 
 class Node
