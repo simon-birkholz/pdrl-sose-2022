@@ -80,7 +80,8 @@ class Worker(threading.Thread):
                 # todo return policy vector for learning
                 selected_action = 0
                 if self.use_swig:
-                    action_probs = list(mcts.search(SearchState(observation[0].flatten().tolist(), observation[1])))
+                    action_probs = mcts.search(SearchState(observation[0].flatten().tolist(), observation[1]))
+                    action_probs = list(action_probs)
                     selected_action = np.argmax(action_probs)
 
                     # we need to propagate this the cpp tree
@@ -94,6 +95,12 @@ class Worker(threading.Thread):
                     print(f"Warning: Using fallback agent to sample random move | critical move: {selected_action}")
 
                 # todo hide away because game specific
+
+                valid = self.env.get_valid(observation)
+                valid = np.array(valid).flatten()
+                if not valid[selected_action]:
+                    raise ValueError("Can't execute move, already executed")
+
                 selected = np.unravel_index(selected_action, observation[0].shape)
                 observations.append([observation, selected_action, None])
                 observation, reward, done, info = self.env.step(selected)

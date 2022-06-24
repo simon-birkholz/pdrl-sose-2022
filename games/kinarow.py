@@ -91,47 +91,47 @@ class KInARow(Game):
             print('action space = {}'.format(self.env.action_space))
 
 
-def reset(self):
-    return self.env.reset()
+    def reset(self):
+        return self.env.reset()
 
 
-def get_valid(self, state):
-    return self.env.get_valid(state)
+    def get_valid(self, state):
+        return self.env.get_valid(state)
 
 
-def get_winner(self, state):
-    return self.env.get_winner(state)
+    def get_winner(self, state):
+        return self.env.get_winner(state)
 
 
-def get_next_state(self, state, action):
-    return self.env.get_next_state(state, action)
+    def get_next_state(self, state, action):
+        return self.env.get_next_state(state, action)
 
 
-def next_step(self, state, action):
-    return self.env.next_step(state, action)
+    def next_step(self, state, action):
+        return self.env.next_step(state, action)
 
 
-def step(self, action):
-    return self.env.step(action)
+    def step(self, action):
+        return self.env.step(action)
 
 
-def to_nn_view(self, state):
-    # transforms the state of the game if the player happens to be -1
-    return transform_state(state)
+    def to_nn_view(self, state):
+        # transforms the state of the game if the player happens to be -1
+        return transform_state(state)
 
 
-def correct_policy(self, policy, state):
-    # sets the policy values of non valid moves to zero
-    valid = self.get_valid(state)
+    def correct_policy(self, policy, state):
+        # sets the policy values of non valid moves to zero
+        valid = self.get_valid(state)
 
-    policy = policy.reshape((3, 3))
+        policy = policy.reshape((3, 3))
 
-    # give invalid move a probability of zero
-    policy[valid == 0] = 0
-    policy = policy.flatten()
+        # give invalid move a probability of zero
+        policy[valid == 0] = 0
+        policy = policy.flatten()
 
-    return policy
+        return policy
 
 
-def render(self):
-    self.env.render()
+    def render(self):
+        self.env.render()
