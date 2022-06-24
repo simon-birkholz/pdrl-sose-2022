@@ -62,7 +62,7 @@ void Node::back_propagate(double leaf_value)
   visit_count_++;
 }
 
-int Node::select(double c_puct, double c_virtual_loss)
+int Node::select(const double c_p, const double c_loss)
 {
   double max_ucb = std::numeric_limits<double>::lowest();
   int best_action = -1;
@@ -76,7 +76,7 @@ int Node::select(double c_puct, double c_virtual_loss)
       continue;
     }
 
-    double ucb = node->upper_confidence_bound();
+    double ucb = node->upper_confidence_bound(c_p, c_loss);
     if (ucb > max_ucb)
     {
       max_ucb = ucb;
@@ -117,11 +117,13 @@ void Node::expand(const std::vector<double>& prior_probabilites)
   is_leaf_ = false;
 }
 
-double Node::upper_confidence_bound() const
+double Node::upper_confidence_bound(const double c_p, const double c_v) const
 {
   const int N = visit_count_.load();
-  double U = prior_ / static_cast<double>(1 + N);
-  return action_value_ + U;
+  double U = c_p * prior_ / static_cast<double>(1 + N);
+
+  double v_loss = c_v * virtual_loss_.load();
+  return action_value_ + U - v_loss;
 }
 
 Node& Node::operator=(const Node& n)
@@ -147,14 +149,17 @@ MonteCarloTreeSearch::MonteCarloTreeSearch(
     NeuralNetwork* network,
     std::pair<int, int> board_size,
     unsigned k,
-    unsigned n_sim)
+    unsigned n_sim,
+    unsigned n_threads)
     : n_sim_(n_sim),
       root_(std::make_shared<Node>(nullptr, 1)),
-      tpool_(1),
+      tpool_(n_threads),
       network_(network),
       board_width_(board_size.first),
       board_height_(board_size.second),
-      k_(k)
+      k_(k),
+      c_p_(5),
+      c_loss_(3)
 {}
 
 std::vector<double> MonteCarloTreeSearch::get_action_probabilites()
@@ -162,6 +167,7 @@ std::vector<double> MonteCarloTreeSearch::get_action_probabilites()
   const auto action_space = board_width_ * board_height_;
   std::vector<double> result(action_space, 0);
   int visit_sum = 0;
+  D_MESS("Containing " + std::to_string(root_->children_.size()) + " nodes")
   for (const auto& [action, child] : root_->children_)
   {
     int visit_count = child->visit_count_.load();
@@ -244,7 +250,7 @@ void MonteCarloTreeSearch::simulate(KinaRow game)
       break;
     }
 
-    auto action = node->select(0, 0);
+    auto action = node->select(c_p_, c_loss_);
 
     if (action >= 0)
     {

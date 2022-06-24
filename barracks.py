@@ -74,7 +74,7 @@ class Worker(threading.Thread):
             observations = []
             mcts = None
             if self.use_swig:
-                mcts = MonteCarloTreeSearch(self.global_model, PII(self.board_shape[0],self.board_shape[1]), self.k, self.mcts_sims)
+                mcts = MonteCarloTreeSearch(self.global_model, PII(self.board_shape[0],self.board_shape[1]), self.k, self.mcts_sims,8)
             else:
                 mcts = old_mcts.MonteCarloTreeSearch(self.env, self.global_model)
             step_count = 0
@@ -169,7 +169,7 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
 
         model_candidate.train(tData, 32, 10)
 
-        game = TicTacToe()
+        game = KInARow((8,8),4)
         c = Colosseum(game, AiPlayer(game, model_candidate, False, 100), AiPlayer(game, global_model, False, 100))
         print("Now Duel models to find out if better")
         n_wins, g_wins, draws = c.fight(32)

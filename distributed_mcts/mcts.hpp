@@ -24,7 +24,7 @@ public:
   // smart pointer too much headdache
 
   MonteCarloTreeSearch(
-      NeuralNetwork* network, std::pair<int, int> board_size, unsigned k, unsigned n_sim);
+      NeuralNetwork* network, std::pair<int, int> board_size, unsigned k, unsigned n_sim, unsigned n_threads);
 
   std::vector<double> get_action_probabilites();
 
@@ -44,6 +44,8 @@ private:
   NeuralNetwork* network_;
   unsigned board_width_;
   unsigned board_height_;
+  double c_p_;
+  double c_loss_;
 };
 
 class Node
@@ -60,10 +62,10 @@ public:
   bool is_leaf_node() const { return this->is_leaf_; }
   void back_propagate(double leaf_value);
 
-  int select(double c_puct, double c_virtual_loss);
+  int select(const double c_p,const double c_loss);
   void expand(const std::vector<double>& prior_probabilites);
 
-  double upper_confidence_bound() const;
+  double upper_confidence_bound(const double c_p,const  double c_loss) const;
 
 
 private:
