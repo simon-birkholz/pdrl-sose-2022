@@ -35,6 +35,9 @@ public:
   // Executes one Simulation
   void simulate(KinaRow game);
 
+  int get_node_count() const;
+  int get_max_depth() const;
+
 private:
   void search_internal(search_t);
   unsigned n_sim_;
@@ -67,6 +70,8 @@ public:
 
   double upper_confidence_bound(const double c_p,const  double c_loss) const;
 
+  int get_node_count() const;
+  int get_max_depth() const;
 
 private:
   Node* parent_;

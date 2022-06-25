@@ -84,6 +84,7 @@ class Worker(threading.Thread):
                 selected_action = 0
                 if self.use_swig:
                     action_probs = mcts.search(SearchState(observation[0].flatten().tolist(), observation[1]))
+                    print(f"Node count: {mcts.get_node_count()} Max depth: {mcts.get_max_depth()}")
                     action_probs = list(action_probs)
                     selected_action = np.argmax(action_probs)
 

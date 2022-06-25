@@ -319,3 +319,36 @@ void MonteCarloTreeSearch::simulate(KinaRow game)
   node->back_propagate(-value);
   D_MESS("Ended simulation of Game")
 }
+
+int MonteCarloTreeSearch::get_node_count() const
+{
+  return root_->get_node_count();
+}
+int MonteCarloTreeSearch::get_max_depth() const
+{
+  return root_->get_max_depth();
+}
+
+int Node::get_node_count() const 
+{
+  if (is_leaf_)
+    return 1;
+  int node_count = 0;
+  for (const auto& [action, child] : children_)
+  {
+    node_count += child->get_node_count();
+  }
+  return node_count;
+}
+int Node::get_max_depth() const
+{
+  if (is_leaf_)
+    return 1;
+
+  int max_depth = 0;
+  for (const auto& [action, child] : children_) 
+  {
+    max_depth = std::max({1 + child->get_max_depth(), max_depth});
+  }
+  return max_depth;
+}

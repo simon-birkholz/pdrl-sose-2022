@@ -35,7 +35,7 @@ int main()
     std::cout << "Init: Neural Network" << std::endl;
 
     std::shared_ptr<MonteCarloTreeSearch> search =
-        std::make_shared<MonteCarloTreeSearch>(nn.get(), board_shape, k, 100);
+        std::make_shared<MonteCarloTreeSearch>(nn.get(), board_shape, k, 100,1);
 
     std::cout << "Init: Monte Carlo Tree Search" << std::endl;
     std::vector<int> board(board_width * board_height, 0);
