@@ -31,6 +31,9 @@ from ai_player import AiPlayer
 
 import threading
 
+BOARD_SIZE = (8,8)
+K = 4
+
 HYPER_PARAMS = {
     'lr': 0.001,
     'l2': 0.0001,
@@ -52,20 +55,21 @@ class Worker(threading.Thread):
     pBar = tqdm()
     save_lock = threading.Lock()
 
-    def __init__(self, total_episodes, mcts_sims, global_model, result_queue, use_swig=False):
+    def __init__(self, total_episodes, mcts_sims, global_model, result_queue, threads=1, use_swig=False):
         super(Worker, self).__init__()
         self.result_queue = result_queue
         self.global_model = global_model
 
+        self.threads = threads
         self.total_episodes = total_episodes
         self.mcts_sims = mcts_sims
         self.experience = []
         self.use_swig = use_swig
-        self.board_shape = (8, 8)
-        self.k = 4
+        self.board_shape = BOARD_SIZE
+        self.k = K
         self.env = KInARow(self.board_shape,self.k)
         self.fallback_agent = RandomPlayer(self.env)
-        self.action_space = 64
+        self.action_space = BOARD_SIZE[0] * BOARD_SIZE[1]
 
     def run(self):
 
@@ -74,7 +78,7 @@ class Worker(threading.Thread):
             observations = []
             mcts = None
             if self.use_swig:
-                mcts = MonteCarloTreeSearch(self.global_model, PII(self.board_shape[0],self.board_shape[1]), self.k, self.mcts_sims,1)
+                mcts = MonteCarloTreeSearch(self.global_model, PII(self.board_shape[0],self.board_shape[1]), self.k, self.mcts_sims,self.threads)
             else:
                 mcts = old_mcts.MonteCarloTreeSearch(self.env, self.global_model)
             step_count = 0
@@ -137,6 +141,12 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
 
     global_eps = int(n_iter / its_per_ep)
 
+    w_threads = threads
+    tree_threads = 1
+    if use_swig:
+        w_threads = 1
+        tree_threads = threads
+
     for i in range(0, global_eps):
 
         Worker.global_episode = 0
@@ -144,7 +154,7 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
         workers = [Worker(its_per_ep,
                           100,
                           swig_wrapper if use_swig else global_model,
-                          history_train_examples, use_swig) for i in range(threads)]
+                          history_train_examples,tree_threads, use_swig) for i in range(w_threads)]
 
         for _, worker in enumerate(workers):
             worker.start()
@@ -171,7 +181,7 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
         model_candidate.train(tData, 32, 10)
 
         game = KInARow((8,8),4)
-        c = Colosseum(game, AiPlayer(game, model_candidate, False, 100), AiPlayer(game, global_model, False, 100))
+        c = Colosseum(game, AiPlayer(game, model_candidate,BOARD_SIZE,K, False, 100,1), AiPlayer(game, global_model,BOARD_SIZE,K, False, 100,1))
         print("Now Duel models to find out if better")
         n_wins, g_wins, draws = c.fight(32)
         print(f"New model won {n_wins} games, old model won {g_wins} games.")

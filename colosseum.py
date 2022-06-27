@@ -41,6 +41,9 @@ class Colosseum:
 
                 selected = np.unravel_index(selected_action, observation[0].shape)
 
+                self.player1.inform(selected_action)
+                self.player2.inform(selected_action)
+
                 observation, reward, done, info = self.game.step(selected)
                 if done:
                     if reward == 1:

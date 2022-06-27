@@ -23,8 +23,11 @@ HYPER_PARAMS = {
 model = NetworkWrapper(**HYPER_PARAMS)
 model.load_model('training','checkpoint')
 
+board_size = (8,8)
+k = 4
+
 env = TicTacToe()
-agent = AiPlayer(env,model,False, 100)
+agent = AiPlayer(env,model,board_size,k,False, 100)
 
 # play against a simple ai agent
 observation = env.reset()
