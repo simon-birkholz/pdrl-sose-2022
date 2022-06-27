@@ -4,6 +4,7 @@ from swig.distributed_mcts import MonteCarloTreeSearch, SearchState, PII
 from swig.distributed_mcts import NeuralNetwork
 
 import mcts as old_mcts
+import numpy as np
 
 from baselines import RandomPlayer
 
@@ -30,9 +31,11 @@ class AiPlayer:
         self.fallback_agent = RandomPlayer(game)
 
     def get_action(self, obs):
-        action = 0
+        action = -1
         if self.use_swig:
-            action = self.mcts.search(SearchState(obs[0].flatten().tolist(), obs[1]))
+            action_probs = self.mcts.search(SearchState(obs[0].flatten().tolist(), obs[1]))
+            action_probs = list(action_probs)
+            action = np.argmax(action_probs)
         else:
             action = self.mcts.search(obs, self.sim_count)
         if not action >= 0:
