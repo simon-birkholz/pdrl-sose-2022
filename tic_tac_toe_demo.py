@@ -27,7 +27,7 @@ board_size = (8,8)
 k = 4
 
 env = TicTacToe()
-agent = AiPlayer(env,model,board_size,k,False, 100)
+agent = AiPlayer(env,model,board_size,k,False, 100,1)
 
 # play against a simple ai agent
 observation = env.reset()
