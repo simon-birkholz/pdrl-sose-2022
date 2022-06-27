@@ -8,8 +8,10 @@ os.add_dll_directory('C:\\Program Files\\libtorch\\lib')
 
 from models.neural_network import NetworkWrapper
 
+from swig.distributed_mcts import NeuralNetwork
+
 from tqdm import tqdm
-from games.kinarow import TicTacToe
+from games.kinarow import TicTacToe, KInARow
 from ai_player import AiPlayer
 
 
@@ -20,14 +22,15 @@ HYPER_PARAMS = {
     'n_channels' : 64
 }
 
-model = NetworkWrapper(**HYPER_PARAMS)
-model.load_model('training','checkpoint')
+#model = NetworkWrapper(**HYPER_PARAMS)
+#model.load_model('training','checkpoint')
+swig_wrapper = NeuralNetwork('./training/checkpoint.pt', True, 10)
 
 board_size = (8,8)
 k = 4
 
-env = TicTacToe()
-agent = AiPlayer(env,model,board_size,k,False, 100,1)
+env = KInARow(board_size,k)
+agent = AiPlayer(env,swig_wrapper,board_size,k,False, 100,1)
 
 # play against a simple ai agent
 observation = env.reset()
