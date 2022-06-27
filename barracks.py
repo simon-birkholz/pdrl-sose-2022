@@ -74,7 +74,7 @@ class Worker(threading.Thread):
             observations = []
             mcts = None
             if self.use_swig:
-                mcts = MonteCarloTreeSearch(self.global_model, PII(self.board_shape[0],self.board_shape[1]), self.k, self.mcts_sims,8)
+                mcts = MonteCarloTreeSearch(self.global_model, PII(self.board_shape[0],self.board_shape[1]), self.k, self.mcts_sims,1)
             else:
                 mcts = old_mcts.MonteCarloTreeSearch(self.env, self.global_model)
             step_count = 0
@@ -84,7 +84,7 @@ class Worker(threading.Thread):
                 selected_action = 0
                 if self.use_swig:
                     action_probs = mcts.search(SearchState(observation[0].flatten().tolist(), observation[1]))
-                    print(f"Node count: {mcts.get_node_count()} Max depth: {mcts.get_max_depth()}")
+                    #print(f"Node count: {mcts.get_node_count()} Max depth: {mcts.get_max_depth()}")
                     action_probs = list(action_probs)
                     selected_action = np.argmax(action_probs)
 
