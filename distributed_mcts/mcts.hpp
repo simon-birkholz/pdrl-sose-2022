@@ -24,7 +24,11 @@ public:
   // smart pointer too much headdache
 
   MonteCarloTreeSearch(
-      NeuralNetwork* network, std::pair<int, int> board_size, unsigned k, unsigned n_sim, unsigned n_threads);
+      NeuralNetwork* network,
+      std::pair<int, int> board_size,
+      unsigned k,
+      unsigned n_sim,
+      unsigned n_threads);
 
   std::vector<double> get_action_probabilites();
 
@@ -62,14 +66,19 @@ public:
   Node(Node* parent, double prior);
   Node& operator=(const Node& n);
 
+private:
+
 public:
-  bool is_leaf_node() const { return this->is_leaf_; }
+  inline bool is_leaf_node() const
+  {
+    return this->is_leaf_;
+  }
   void back_propagate(double leaf_value);
 
-  int select(const double c_p,const double c_loss);
-  void expand(const std::vector<double>& prior_probabilites);
+  int select(const double c_p, const double c_loss);
+  bool expand(const std::vector<double>& prior_probabilites);
 
-  double upper_confidence_bound(const double c_p,const  double c_loss) const;
+  double upper_confidence_bound(const double c_p, const double c_loss) const;
 
   int get_node_count() const;
   int get_max_depth() const;
@@ -78,7 +87,7 @@ private:
   Node* parent_;
   std::map<unsigned, node_ptr> children_;
   bool is_leaf_;
-  std::mutex lock_;
+  std::recursive_mutex lock_;
   std::atomic<unsigned> visit_count_;
   double prior_;
   double action_value_;

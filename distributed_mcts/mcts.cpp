@@ -54,12 +54,13 @@ void Node::back_propagate(double leaf_value)
   virtual_loss_--;
 
   unsigned visit_count = visit_count_.load();
+  visit_count_++;
+
   {
-    std::lock_guard<std::mutex> lock(lock_);
+    std::lock_guard<std::recursive_mutex> lock(lock_);
     action_value_ =
         (visit_count * action_value_ + leaf_value) / (visit_count + 1);
   }
-  visit_count_++;
 }
 
 int Node::select(const double c_p, const double c_loss)
@@ -97,13 +98,14 @@ int Node::select(const double c_p, const double c_loss)
   return best_action;
 }
 
-void Node::expand(const std::vector<double>& prior_probabilites)
+bool Node::expand(const std::vector<double>& prior_probabilites)
 {
-  std::lock_guard<std::mutex> lock(lock_);
+  std::lock_guard<std::recursive_mutex> lock(lock_);
 
-  if (!is_leaf_)
+
+  if (!is_leaf_node())
   {
-    return;
+    return false;
   }
 
   for (int i = 0; i < prior_probabilites.size(); i++)
@@ -114,7 +116,9 @@ void Node::expand(const std::vector<double>& prior_probabilites)
     }
   }
 
+
   is_leaf_ = false;
+  return true;
 }
 
 double Node::upper_confidence_bound(const double c_p, const double c_v) const
@@ -196,7 +200,7 @@ void MonteCarloTreeSearch::apply_action(int action)
     node_ptr new_head = root_->children_[action];
     new_head->parent_ = nullptr;
 
-    root_ = std::move(new_head);
+    root_ = new_head;
   }
   else
   {
@@ -240,7 +244,7 @@ void MonteCarloTreeSearch::search_internal(search_t game)
     // lets hope this works
     auto f =
         std::bind(&MonteCarloTreeSearch::simulate, this, std::placeholders::_1);
-    auto future = tpool_.submit(f, gWrapper);
+    auto future = tpool_.submit(f, std::move(gWrapper));
 
     futures.emplace_back(std::move(future));
   }
@@ -264,6 +268,7 @@ void MonteCarloTreeSearch::search_internal(search_t game)
 
 void MonteCarloTreeSearch::simulate(KinaRow game)
 {
+wtf:
   D_MESS("Stated simulation of Game")
   node_ptr node = root_;
 
@@ -288,6 +293,7 @@ void MonteCarloTreeSearch::simulate(KinaRow game)
       break;
     }
   }
+
   D_MESS("Selected Node")
   const auto action_space = board_width_ * board_height_;
   int status = game.get_winner();
@@ -339,7 +345,11 @@ void MonteCarloTreeSearch::simulate(KinaRow game)
     // TODO workaround if all actions invalid
 
     D_MESS("Expanding Node");
-    node->expand(action_priors);
+    bool was_expanded = node->expand(action_priors);
+    if (!was_expanded)
+    {
+      std::cerr << "Node was selected but already expanded" << std::endl;
+    }
 
     if (action_count != node->children_.size())
     {
@@ -366,7 +376,7 @@ int MonteCarloTreeSearch::get_max_depth() const
 
 int Node::get_node_count() const
 {
-  if (is_leaf_)
+  if (is_leaf_node())
     return 0;
   int node_count = 1;
   for (const auto& [action, child] : children_)
@@ -377,7 +387,7 @@ int Node::get_node_count() const
 }
 int Node::get_max_depth() const
 {
-  if (is_leaf_)
+  if (is_leaf_node())
     return 1;
 
   int max_depth = 0;

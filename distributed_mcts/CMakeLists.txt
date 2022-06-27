@@ -52,3 +52,4 @@ add_custom_command(TARGET ${target_name} POST_BUILD
 include(test)
 add_zero_test(mcts_internal "mcts_internal")
 add_zero_test(kinarow_get_winner "mcts_internal")
+add_zero_test(mcts_race_conditions "mcts_internal")
