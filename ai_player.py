@@ -1,6 +1,6 @@
 from models.neural_network import NetworkWrapper
 
-from swig.distributed_mcts import MonteCarloTreeSearch, SearchState
+from swig.distributed_mcts import MonteCarloTreeSearch, SearchState, PII
 from swig.distributed_mcts import NeuralNetwork
 
 import mcts as old_mcts
@@ -24,7 +24,7 @@ class AiPlayer:
             #self.model = NetworkWrapper(**kwargs)
             #self.model.load_model('training', 'checkpoint')
         if self.use_swig:
-            self.mcts = MonteCarloTreeSearch(self.model,self.board_size, self.k, sim_count,thread_count)
+            self.mcts = MonteCarloTreeSearch(self.model,PII(self.board_size[0],self.board_size[1]), self.k, sim_count,thread_count)
         else:
             self.mcts = old_mcts.MonteCarloTreeSearch(self.game, self.model)
         self.fallback_agent = RandomPlayer(game)

@@ -27,6 +27,8 @@ public:
 
   std::vector<int> get_board() const { return board_; }
 
+  void print_board() const;
+
 private:
   bool check_won_player(const int player) const;
 

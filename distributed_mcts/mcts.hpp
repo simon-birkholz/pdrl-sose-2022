@@ -49,6 +49,7 @@ private:
   unsigned board_height_;
   double c_p_;
   double c_loss_;
+  std::mutex lock_search_;
 };
 
 class Node

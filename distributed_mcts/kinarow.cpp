@@ -1,6 +1,7 @@
 #include "kinarow.hpp"
 
 #include <algorithm>
+#include <iostream>
 #include <numeric>
 
 KinaRow::KinaRow(
@@ -91,4 +92,22 @@ void KinaRow::apply_action(int action)
 {
   board_[action] = player_;
   player_ = -player_;
+}
+
+void KinaRow::print_board() const
+{
+  for (size_t i = 0; i < height_; i++)
+  {
+    for (size_t j = 0; j < width_; j++)
+    {
+      int val = board_[i * width_ + j];
+      if (val == -1)
+        std::cout << "x";
+      if (val == 1)
+        std::cout << "o";
+      if (val == 0)
+        std::cout << "+";
+    }
+    std::cout << std::endl;
+  }
 }

@@ -68,7 +68,7 @@ int Node::select(const double c_p, const double c_loss)
   int best_action = -1;
   node_ptr best_node = {};
 
-  for (const auto& [action, node] : children_)
+  for (const auto [action, node] : children_)
   {
     // skip empty nodes
     if (!node)
@@ -164,6 +164,7 @@ MonteCarloTreeSearch::MonteCarloTreeSearch(
 
 std::vector<double> MonteCarloTreeSearch::get_action_probabilites()
 {
+  std::lock_guard<std::mutex> lock(lock_search_);
   const auto action_space = board_width_ * board_height_;
   std::vector<double> result(action_space, 0);
   int visit_sum = 0;
@@ -177,6 +178,7 @@ std::vector<double> MonteCarloTreeSearch::get_action_probabilites()
 
   if (visit_sum == 0)
   {
+    std::cerr << "Child count: " << root_->children_.size() << std::endl;
     std::cerr << "Invalid state for mcts" << std::endl;
   }
   for (int i = 0; i < action_space; i++)
@@ -188,17 +190,25 @@ std::vector<double> MonteCarloTreeSearch::get_action_probabilites()
 
 void MonteCarloTreeSearch::apply_action(int action)
 {
+  std::lock_guard<std::mutex> lock(lock_search_);
   if (action >= 0 && root_->children_.find(action) != root_->children_.end())
   {
     node_ptr new_head = root_->children_[action];
     new_head->parent_ = nullptr;
 
-    root_ = new_head;
+    root_ = std::move(new_head);
   }
   else
   {
+    std::cout << "Node has actions ";
+    for (const auto& [action, child] : root_->children_)
+    {
+      std::cout << action << " ";
+    }
+    std::cout << std::endl;
     // start new search
     root_ = std::make_shared<Node>(nullptr, 1);
+    std::cout << "Started new Search on action " << action << std::endl;
   }
 }
 
@@ -209,11 +219,15 @@ std::vector<double> MonteCarloTreeSearch::search(search_t game)
       "Board size must match initialized values");
   search_internal(game);
   D_MESS("Completed Search");
+
+  KinaRow gWrapper(board_height_, board_width_, k_, game.first, game.second);
+  //gWrapper.print_board();
   return get_action_probabilites();
 }
 
 void MonteCarloTreeSearch::search_internal(search_t game)
 {
+  std::lock_guard<std::mutex> lock(lock_search_);
   std::vector<std::future<void>> futures;
 
   for (int i = 0; i < n_sim_; i++)
@@ -231,9 +245,19 @@ void MonteCarloTreeSearch::search_internal(search_t game)
     futures.emplace_back(std::move(future));
   }
 
+  int collect_count = 0;
   for (int i = 0; i < futures.size(); i++)
   {
-    futures[i].wait();
+    try
+    {
+      futures[i].get();
+      collect_count++;
+    }
+    catch (const std::exception& e)
+    {
+      std::cout << "Exception in threads after " << collect_count
+                << " simulations";
+    }
     D_MESS("Collected Thread")
   }
 }
@@ -283,6 +307,7 @@ void MonteCarloTreeSearch::simulate(KinaRow game)
     // set impossible moves to zero
     std::vector<bool> possible = game.get_valid();
 
+    int action_count = action_space;
     assert(
         possible.size() == action_priors.size() &&
         "Detected invalid game wrapper");
@@ -291,6 +316,7 @@ void MonteCarloTreeSearch::simulate(KinaRow game)
       if (!possible[i])
       {
         action_priors[i] = 0;
+        action_count--;
       }
     }
 
@@ -298,6 +324,10 @@ void MonteCarloTreeSearch::simulate(KinaRow game)
     double p_sum = 0;
     for (int i = 0; i < action_space; i++)
     {
+      if (action_priors[i] < 0)
+      {
+        std::cout << "detected negative probability" << std::endl;
+      }
       p_sum += action_priors[i];
     }
     for (int i = 0; i < action_space; i++)
@@ -310,6 +340,11 @@ void MonteCarloTreeSearch::simulate(KinaRow game)
 
     D_MESS("Expanding Node");
     node->expand(action_priors);
+
+    if (action_count != node->children_.size())
+    {
+      std::cout << "Invalid node state: child count mismatch" << std::endl;
+    }
   }
   else
   {
@@ -329,11 +364,11 @@ int MonteCarloTreeSearch::get_max_depth() const
   return root_->get_max_depth();
 }
 
-int Node::get_node_count() const 
+int Node::get_node_count() const
 {
   if (is_leaf_)
-    return 1;
-  int node_count = 0;
+    return 0;
+  int node_count = 1;
   for (const auto& [action, child] : children_)
   {
     node_count += child->get_node_count();
@@ -346,7 +381,7 @@ int Node::get_max_depth() const
     return 1;
 
   int max_depth = 0;
-  for (const auto& [action, child] : children_) 
+  for (const auto& [action, child] : children_)
   {
     max_depth = std::max({1 + child->get_max_depth(), max_depth});
   }
