@@ -31,7 +31,7 @@ from ai_player import AiPlayer
 
 import threading
 
-BOARD_SIZE = (8,8)
+BOARD_SIZE = (8, 8)
 K = 4
 
 HYPER_PARAMS = {
@@ -39,13 +39,12 @@ HYPER_PARAMS = {
     'l2': 0.0001,
     'n_layers': 4,
     'n_channels': 256,
-    'arch' : 'conv',
-    'n' : 8
+    'arch': 'conv',
+    'n': 8
 }
 
 
-
-def expand_action(action,action_space):
+def expand_action(action, action_space):
     v = np.zeros(action_space)
     v[action] = 1
     return v
@@ -68,7 +67,7 @@ class Worker(threading.Thread):
         self.use_swig = use_swig
         self.board_shape = BOARD_SIZE
         self.k = K
-        self.env = KInARow(self.board_shape,self.k)
+        self.env = KInARow(self.board_shape, self.k)
         self.fallback_agent = RandomPlayer(self.env)
         self.action_space = BOARD_SIZE[0] * BOARD_SIZE[1]
 
@@ -79,16 +78,17 @@ class Worker(threading.Thread):
             observations = []
             mcts = None
             if self.use_swig:
-                mcts = MonteCarloTreeSearch(self.global_model, PII(self.board_shape[0],self.board_shape[1]), self.k, self.mcts_sims,self.threads)
+                mcts = MonteCarloTreeSearch(self.global_model, PII(self.board_shape[0], self.board_shape[1]), self.k,
+                                            self.mcts_sims, self.threads)
             else:
                 mcts = old_mcts.MonteCarloTreeSearch(self.env, self.global_model)
             step_count = 0
             while True:
                 step_count += 1
                 # todo return policy vector for learning
-                #print("State in python")
-                #self.env.render()
-                #print("State in cpp")
+                # print("State in python")
+                # self.env.render()
+                # print("State in cpp")
                 selected_action = 0
                 if self.use_swig:
                     action_probs = mcts.search(SearchState(observation[0].flatten().tolist(), observation[1]))
@@ -117,8 +117,10 @@ class Worker(threading.Thread):
                 observations.append([observation, selected_action, None])
                 observation, reward, done, info = self.env.step(selected)
                 if done:
-                    exp = [(self.env.to_nn_view(x[0]), expand_action(x[1], self.action_space), (-1) ** (x[0][1] != reward)) for x in
-                           observations]
+                    exp = [
+                        (self.env.to_nn_view(x[0]), expand_action(x[1], self.action_space), (-1) ** (x[0][1] != reward))
+                        for x in
+                        observations]
                     self.experience.append(exp)
                     self.env.render()
                     Worker.global_episode += 1
@@ -129,7 +131,7 @@ class Worker(threading.Thread):
 
 def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
     use_swig = True
-    libtorch_use_gpu=False
+    libtorch_use_gpu = False
 
     history_train_examples = deque([], maxlen=queue_length)
     global_model = NetworkWrapper(**HYPER_PARAMS, train_use_gpu=True, libtorch_use_gpu=libtorch_use_gpu)
@@ -158,7 +160,7 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
         workers = [Worker(its_per_ep,
                           100,
                           swig_wrapper if use_swig else global_model,
-                          history_train_examples,tree_threads, use_swig) for i in range(w_threads)]
+                          history_train_examples, tree_threads, use_swig) for i in range(w_threads)]
 
         for _, worker in enumerate(workers):
             worker.start()
@@ -185,18 +187,19 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
         model_candidate.train(tData, 32, 10)
         model_candidate.save_model('training', 'arena-new')
 
-        game = KInARow((8,8),4)
+        game = KInARow((8, 8), 4)
         c = None
         if use_swig:
             arena_wrapper = NeuralNetwork('./training/arena-new.pt', libtorch_use_gpu, 10)
             c = Colosseum(game, AiPlayer(game, arena_wrapper, BOARD_SIZE, K, True, 100, 8),
                           AiPlayer(game, swig_wrapper, BOARD_SIZE, K, True, 100, 8))
         else:
-            c = Colosseum(game, AiPlayer(game, model_candidate,BOARD_SIZE,K, False, 100,1), AiPlayer(game, global_model,BOARD_SIZE,K, False, 100,1))
+            c = Colosseum(game, AiPlayer(game, model_candidate, BOARD_SIZE, K, False, 100, 1),
+                          AiPlayer(game, global_model, BOARD_SIZE, K, False, 100, 1))
         print("Now Duel models to find out if better")
         n_wins, g_wins, draws = c.fight(32)
         print(f"New model won {n_wins} games, old model won {g_wins} games.")
-        if n_wins  > 16:
+        if n_wins > 16:
             print("Adapting weights")
             # adapt new model weights
             model_candidate.save_model('training', 'checkpoint')

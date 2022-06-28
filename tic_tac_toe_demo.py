@@ -1,9 +1,9 @@
-
 import gym
 import boardgame2
 import numpy as np
 
 import os
+
 os.add_dll_directory('C:\\Program Files\\libtorch\\lib')
 
 from models.neural_network import NetworkWrapper
@@ -14,23 +14,22 @@ from tqdm import tqdm
 from games.kinarow import TicTacToe, KInARow
 from ai_player import AiPlayer
 
-
 HYPER_PARAMS = {
-    'lr' : 0.001,
-    'l2' : 0.0001,
-    'n_layers' : 4,
-    'n_channels' : 64
+    'lr': 0.001,
+    'l2': 0.0001,
+    'n_layers': 4,
+    'n_channels': 64
 }
 
-#model = NetworkWrapper(**HYPER_PARAMS)
-#model.load_model('training','checkpoint')
+# model = NetworkWrapper(**HYPER_PARAMS)
+# model.load_model('training','checkpoint')
 swig_wrapper = NeuralNetwork('./training/checkpoint.pt', True, 10)
 
-board_size = (8,8)
+board_size = (8, 8)
 k = 4
 
-env = KInARow(board_size,k)
-agent = AiPlayer(env,swig_wrapper,board_size,k,False, 100,1)
+env = KInARow(board_size, k)
+agent = AiPlayer(env, swig_wrapper, board_size, k, False, 100, 1)
 
 # play against a simple ai agent
 observation = env.reset()

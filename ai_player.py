@@ -10,22 +10,23 @@ from baselines import RandomPlayer
 
 
 class AiPlayer:
-    def __init__(self,game,m_name,board_size,k,use_swig=False,sim_count=50,thread_count=8,**kwargs):
+    def __init__(self, game, m_name, board_size, k, use_swig=False, sim_count=50, thread_count=8, **kwargs):
         self.game = game
         self.use_swig = use_swig
         self.sim_count = sim_count
         self.board_size = board_size
         self.k = k
         if type(m_name) == str:
-            #self.model = NeuralNetwork(m_name,False,10)
+            # self.model = NeuralNetwork(m_name,False,10)
             self.model = NetworkWrapper(**kwargs)
-            self.model.load_model('training','checkpoint')
+            self.model.load_model('training', 'checkpoint')
         else:
             self.model = m_name
-            #self.model = NetworkWrapper(**kwargs)
-            #self.model.load_model('training', 'checkpoint')
+            # self.model = NetworkWrapper(**kwargs)
+            # self.model.load_model('training', 'checkpoint')
         if self.use_swig:
-            self.mcts = MonteCarloTreeSearch(self.model,PII(self.board_size[0],self.board_size[1]), self.k, sim_count,thread_count)
+            self.mcts = MonteCarloTreeSearch(self.model, PII(self.board_size[0], self.board_size[1]), self.k, sim_count,
+                                             thread_count)
         else:
             self.mcts = old_mcts.MonteCarloTreeSearch(self.game, self.model)
         self.fallback_agent = RandomPlayer(game)
@@ -43,7 +44,7 @@ class AiPlayer:
             print("Warning: Using fallback agent to sample random move")
         return action
 
-    def inform(self,action):
+    def inform(self, action):
         if self.use_swig:
             self.mcts.apply_action(int(action))
 
