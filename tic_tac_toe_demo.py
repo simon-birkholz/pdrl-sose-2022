@@ -8,6 +8,8 @@ os.add_dll_directory('C:\\Program Files\\libtorch\\lib')
 
 from models.neural_network import NetworkWrapper
 
+from baselines import GreedyPlayer
+
 from swig.distributed_mcts import NeuralNetwork
 
 from tqdm import tqdm
@@ -29,7 +31,8 @@ board_size = (8, 8)
 k = 4
 
 env = KInARow(board_size, k)
-agent = AiPlayer(env, swig_wrapper, board_size, k, False, 100, 1)
+#agent = AiPlayer(env, swig_wrapper, board_size, k, False, 100, 1)
+agent = GreedyPlayer(game=env)
 
 # play against a simple ai agent
 observation = env.reset()
