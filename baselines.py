@@ -12,3 +12,6 @@ class RandomPlayer:
         if len(poss_actions) > 0:
             return np.random.choice(poss_actions)
         raise ValueError("No possible moves. Game should be finished long ago")
+
+    def inform(self,action):
+        pass

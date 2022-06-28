@@ -45,4 +45,4 @@ class AiPlayer:
 
     def inform(self,action):
         if self.use_swig:
-            self.mcts.apply_action(action)
+            self.mcts.apply_action(int(action))
