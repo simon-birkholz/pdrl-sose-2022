@@ -7,16 +7,17 @@ import numpy as np
 from tqdm import tqdm
 from baselines import RandomPlayer
 from ai_player import AiPlayer
-from games.kinarow import  TicTacToe, KInARow
+from games.kinarow import TicTacToe, KInARow
 
 from swig.distributed_mcts import NeuralNetwork
 
 HYPER_PARAMS = {
-    'lr' : 0.001,
-    'l2' : 0.0001,
-    'n_layers' : 4,
-    'n_channels' : 64
+    'lr': 0.001,
+    'l2': 0.0001,
+    'n_layers': 4,
+    'n_channels': 64
 }
+
 
 class Colosseum:
     def __init__(self, game, player1, player2):
@@ -69,10 +70,10 @@ class Colosseum:
 
 
 if __name__ == "__main__":
-    env = KInARow((8,8),4)
+    env = KInARow((8, 8), 4)
     randomPlayer = RandomPlayer(env)
     arena_wrapper = NeuralNetwork('./training/arena-new.pt', False, 10)
-    ai_player = AiPlayer(env,arena_wrapper,(8,8),4,True, 100,1)
+    ai_player = AiPlayer(env, arena_wrapper, (8, 8), 4, True, 100, 1)
 
     colosseum = Colosseum(env, randomPlayer, ai_player)
 

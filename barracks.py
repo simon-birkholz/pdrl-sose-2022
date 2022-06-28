@@ -31,7 +31,7 @@ from ai_player import AiPlayer
 
 import threading
 
-BOARD_SIZE = (8,8)
+BOARD_SIZE = (8, 8)
 K = 4
 
 HYPER_PARAMS = {
@@ -39,13 +39,12 @@ HYPER_PARAMS = {
     'l2': 0.0001,
     'n_layers': 4,
     'n_channels': 256,
-    'arch' : 'conv',
-    'n' : 8
+    'arch': 'conv',
+    'n': 8
 }
 
 
-
-def expand_action(action,action_space):
+def expand_action(action, action_space):
     v = np.zeros(action_space)
     v[action] = 1
     return v
@@ -68,7 +67,7 @@ class Worker(threading.Thread):
         self.use_swig = use_swig
         self.board_shape = BOARD_SIZE
         self.k = K
-        self.env = KInARow(self.board_shape,self.k)
+        self.env = KInARow(self.board_shape, self.k)
         self.fallback_agent = RandomPlayer(self.env)
         self.action_space = BOARD_SIZE[0] * BOARD_SIZE[1]
         self.use_symmetries = True
@@ -80,16 +79,17 @@ class Worker(threading.Thread):
             observations = []
             mcts = None
             if self.use_swig:
-                mcts = MonteCarloTreeSearch(self.global_model, PII(self.board_shape[0],self.board_shape[1]), self.k, self.mcts_sims,self.threads)
+                mcts = MonteCarloTreeSearch(self.global_model, PII(self.board_shape[0], self.board_shape[1]), self.k,
+                                            self.mcts_sims, self.threads)
             else:
                 mcts = old_mcts.MonteCarloTreeSearch(self.env, self.global_model)
             step_count = 0
             while True:
                 step_count += 1
                 # todo return policy vector for learning
-                #print("State in python")
-                #self.env.render()
-                #print("State in cpp")
+                # print("State in python")
+                # self.env.render()
+                # print("State in cpp")
                 selected_action = 0
                 if self.use_swig:
                     action_probs = mcts.search(SearchState(observation[0].flatten().tolist(), observation[1]))
@@ -145,7 +145,7 @@ class Worker(threading.Thread):
 
 def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
     use_swig = True
-    libtorch_use_gpu=False
+    libtorch_use_gpu = False
 
     history_train_examples = deque([], maxlen=queue_length)
     global_model = NetworkWrapper(**HYPER_PARAMS, train_use_gpu=True, libtorch_use_gpu=libtorch_use_gpu)
@@ -174,7 +174,7 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
         workers = [Worker(its_per_ep,
                           100,
                           swig_wrapper if use_swig else global_model,
-                          history_train_examples,tree_threads, use_swig) for i in range(w_threads)]
+                          history_train_examples, tree_threads, use_swig) for i in range(w_threads)]
 
         for _, worker in enumerate(workers):
             worker.start()

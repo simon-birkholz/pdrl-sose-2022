@@ -6,7 +6,7 @@ from games.game import Game
 
 # wrapper classes arond the kinarow class for the boardgame2 enviroment
 
-def transform_state(observation,n):
+def transform_state(observation, n):
     board, player = observation
     res = np.zeros((2, n, n))
     nBoard = np.array(board * player)
@@ -17,7 +17,7 @@ def transform_state(observation,n):
     return np.asarray(res)
 
 
-def get_board(observation,n):
+def get_board(observation, n):
     board, _ = observation
     res = np.zeros((2, n, n))
     f1 = board == 1
@@ -27,7 +27,7 @@ def get_board(observation,n):
     return np.asarray(res)
 
 
-def flip_colors(board,n):
+def flip_colors(board, n):
     res = np.zeros((2, n, n))
     res[0, :, :] = board[1, :, :]
     res[1, :, :] = board[0, :, :]
@@ -106,7 +106,7 @@ class TicTacToe(Game):
 
     def to_nn_view(self, state):
         # transforms the state of the game if the player happens to be -1
-        return transform_state(state,3)
+        return transform_state(state, 3)
 
     def correct_policy(self, policy, state):
         # sets the policy values of non valid moves to zero
@@ -135,35 +135,27 @@ class KInARow(Game):
             print('observation space = {}'.format(self.env.observation_space))
             print('action space = {}'.format(self.env.action_space))
 
-
     def reset(self):
         return self.env.reset()
-
 
     def get_valid(self, state):
         return self.env.get_valid(state)
 
-
     def get_winner(self, state):
         return self.env.get_winner(state)
-
 
     def get_next_state(self, state, action):
         return self.env.get_next_state(state, action)
 
-
     def next_step(self, state, action):
         return self.env.next_step(state, action)
-
 
     def step(self, action):
         return self.env.step(action)
 
-
     def to_nn_view(self, state):
         # transforms the state of the game if the player happens to be -1
         return transform_state(state, self.board_shape[0])
-
 
     def correct_policy(self, policy, state):
         # sets the policy values of non valid moves to zero
@@ -176,7 +168,6 @@ class KInARow(Game):
         policy = policy.flatten()
 
         return policy
-
 
     def render(self):
         self.env.render()
