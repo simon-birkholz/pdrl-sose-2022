@@ -17,7 +17,8 @@ An implementation for the AlphaZero Algorihm.
 ## Known Issues
 
 - ~~Ai agents often returns invalid move, and a random baseline has to be used as fallback~~
-- Cpp wrapper fails sometimes without notices
+- Cpp wrapper loses nodes when executed multithreaded
+- Based on the adaptation of the weights, sometimes the cpp wrapper can fail multiple times
 
 ## Literature
 
