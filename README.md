@@ -4,10 +4,11 @@ An implementation for the AlphaZero Algorihm.
 
 ## ToDo
 
-- [ ] working monte-carlo tree search
-- [ ] different neural network architectures
-- [ ] functional training loop for self play
-- [ ] working implementation for tictactoe and k-in-a-row
+- [x] working monte-carlo tree search
+- [x] different neural network architectures
+- [x] functional training loop for self play
+- [x] working implementation for tictactoe and k-in-a-row
+
 
 ## NiceToHave (not necessary for the completion of the project
 
