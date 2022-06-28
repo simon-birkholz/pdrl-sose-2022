@@ -46,3 +46,7 @@ class AiPlayer:
     def inform(self,action):
         if self.use_swig:
             self.mcts.apply_action(int(action))
+
+    def reset(self):
+        if self.use_swig:
+            self.mcts.reset()

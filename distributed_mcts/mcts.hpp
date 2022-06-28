@@ -34,6 +34,8 @@ public:
 
   void apply_action(int action);
 
+  void reset();
+
   std::vector<double> search(search_t game);
 
   // Executes one Simulation

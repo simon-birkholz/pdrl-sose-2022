@@ -216,6 +216,12 @@ void MonteCarloTreeSearch::apply_action(int action)
   }
 }
 
+void MonteCarloTreeSearch::reset()
+{
+  std::lock_guard<std::mutex> lock(lock_search_);
+  root_ = std::make_shared<Node>(nullptr, 1);
+}
+
 std::vector<double> MonteCarloTreeSearch::search(search_t game)
 {
   assert(

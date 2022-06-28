@@ -15,3 +15,6 @@ class RandomPlayer:
 
     def inform(self,action):
         pass
+
+    def reset(self):
+        pass

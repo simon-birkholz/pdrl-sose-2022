@@ -31,6 +31,8 @@ class Colosseum:
 
         for i in tqdm(range(0, game_count)):
             observation = self.game.reset()
+            self.player1.reset()
+            self.player2.reset()
             step_count = 0
             sPlayer = randrange(2)
             while True:
