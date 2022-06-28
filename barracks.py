@@ -92,7 +92,7 @@ class Worker(threading.Thread):
                 selected_action = 0
                 if self.use_swig:
                     action_probs = mcts.search(SearchState(observation[0].flatten().tolist(), observation[1]))
-                    print(f"Node count: {mcts.get_node_count()} Max depth: {mcts.get_max_depth()}")
+                    #print(f"Node count: {mcts.get_node_count()} Max depth: {mcts.get_max_depth()}")
                     action_probs = list(action_probs)
                     selected_action = np.argmax(action_probs)
 
@@ -120,9 +120,11 @@ class Worker(threading.Thread):
                     exp = [(self.env.to_nn_view(x[0]), expand_action(x[1], self.action_space), (-1) ** (x[0][1] != reward)) for x in
                            observations]
                     self.experience.append(exp)
-                    self.env.render()
+                    #self.env.render()
                     Worker.global_episode += 1
                     Worker.pBar.update(1)
+                    if self.use_swig:
+                        mcts.reset()
                     # :/ sneaky bastard
                     break
 
@@ -185,18 +187,28 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
         model_candidate.train(tData, 32, 10)
         model_candidate.save_model('training', 'arena-new')
 
+        duelling = False
+
         game = KInARow((8,8),4)
-        c = None
-        if use_swig:
-            arena_wrapper = NeuralNetwork('./training/arena-new.pt', libtorch_use_gpu, 10)
-            c = Colosseum(game, AiPlayer(game, arena_wrapper, BOARD_SIZE, K, True, 100, 8),
-                          AiPlayer(game, swig_wrapper, BOARD_SIZE, K, True, 100, 8))
+
+
+        adapting = False
+        if duelling:
+            c = None
+            if use_swig:
+                arena_wrapper = NeuralNetwork('./training/arena-new.pt', libtorch_use_gpu, 10)
+                c = Colosseum(game, AiPlayer(game, arena_wrapper, BOARD_SIZE, K, True, 100, 8),
+                              AiPlayer(game, swig_wrapper, BOARD_SIZE, K, True, 100, 8))
+            else:
+                c = Colosseum(game, AiPlayer(game, model_candidate,BOARD_SIZE,K, False, 100,1), AiPlayer(game, global_model,BOARD_SIZE,K, False, 100,1))
+            print("Now Duel models to find out if better")
+            n_wins, g_wins, draws = c.fight(32)
+            print(f"New model won {n_wins} games, old model won {g_wins} games.")
+            if n_wins > 16:
+                adapting = True
         else:
-            c = Colosseum(game, AiPlayer(game, model_candidate,BOARD_SIZE,K, False, 100,1), AiPlayer(game, global_model,BOARD_SIZE,K, False, 100,1))
-        print("Now Duel models to find out if better")
-        n_wins, g_wins, draws = c.fight(32)
-        print(f"New model won {n_wins} games, old model won {g_wins} games.")
-        if n_wins  > 16:
+            adapting = True
+        if adapting:
             print("Adapting weights")
             # adapt new model weights
             model_candidate.save_model('training', 'checkpoint')
