@@ -112,7 +112,12 @@ class Worker(threading.Thread):
                 valid = self.env.get_valid(observation)
                 valid = np.array(valid).flatten()
                 if not valid[selected_action]:
-                    raise ValueError("Can't execute move, already executed")
+                    #raise ValueError("Can't execute move, already executed")
+                    # mcts has returned garbage value, use random baseline as fallback and report warning
+                    selected_action = self.fallback_agent.get_action(observation)
+                    print(f"Warning: Using fallback agent to sample random move | critical move: {selected_action}")
+                    if self.use_swig:
+                        mcts.reset()
 
                 selected = np.unravel_index(selected_action, observation[0].shape)
                 observations.append([observation, selected_action, None])
@@ -225,7 +230,7 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
             if use_swig:
                 swig_wrapper.reload_weights()
             try:
-                global_model.save_model(save_dir, 'checkpoint')
+                global_model.save_model(save_dir, f'checkpoint-ep{i*its_per_ep}')
             except:
                 print("Error on saving new model")
 
