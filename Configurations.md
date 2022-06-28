@@ -17,6 +17,8 @@
 
 - Episoden BatchSize: 
 
+- Anzahl MCTS Sims: 25, 50, 100, 200
+
 4 * 3 * 4 * 4 * 2 * 3 * 4 
 
 
