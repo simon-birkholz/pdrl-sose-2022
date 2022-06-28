@@ -24,7 +24,7 @@ import mcts as old_mcts
 
 from tqdm import tqdm
 from baselines import RandomPlayer
-from games.kinarow import TicTacToe, KInARow
+from games.kinarow import TicTacToe, KInARow, generate_symmetries
 
 from colosseum import Colosseum
 from ai_player import AiPlayer
@@ -71,6 +71,7 @@ class Worker(threading.Thread):
         self.env = KInARow(self.board_shape,self.k)
         self.fallback_agent = RandomPlayer(self.env)
         self.action_space = BOARD_SIZE[0] * BOARD_SIZE[1]
+        self.use_symmetries = True
 
     def run(self):
 
@@ -93,7 +94,7 @@ class Worker(threading.Thread):
                 if self.use_swig:
                     action_probs = mcts.search(SearchState(observation[0].flatten().tolist(), observation[1]))
                     #print(f"Node count: {mcts.get_node_count()} Max depth: {mcts.get_max_depth()}")
-                    action_probs = list(action_probs)
+                    #action_probs = list(action_probs)
                     selected_action = np.argmax(action_probs)
 
                     # we need to propagate this the cpp tree
@@ -117,8 +118,16 @@ class Worker(threading.Thread):
                 observations.append([observation, selected_action, None])
                 observation, reward, done, info = self.env.step(selected)
                 if done:
+                    all_obs = []
+                    if self.use_symmetries:
+                        for state,action,_ in observations:
+                            states, actions = generate_symmetries(state,action)
+                            all_obs += [[s,a,None] for s,a in list(zip(states,actions))]
+                    else:
+                        all_obs = observations
+
                     exp = [(self.env.to_nn_view(x[0]), expand_action(x[1], self.action_space), (-1) ** (x[0][1] != reward)) for x in
-                           observations]
+                           all_obs]
                     self.experience.append(exp)
                     #self.env.render()
                     Worker.global_episode += 1
