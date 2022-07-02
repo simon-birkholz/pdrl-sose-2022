@@ -31,8 +31,14 @@ from ai_player import AiPlayer
 
 import threading
 
-BOARD_SIZE = (8, 8)
-K = 4
+try:
+    import wandb
+    USE_WANDB = True
+except ImportError:
+    USE_WANDB = False
+
+BOARD_SIZE = (3, 3)
+K = 3
 
 HYPER_PARAMS = {
     'lr': 0.001,
@@ -40,7 +46,7 @@ HYPER_PARAMS = {
     'n_layers': 4,
     'n_channels': 256,
     'arch': 'conv',
-    'n': 8
+    'n': 3
 }
 
 
@@ -123,6 +129,10 @@ class Worker(threading.Thread):
                 observations.append([observation, selected_action, None])
                 observation, reward, done, info = self.env.step(selected)
                 if done:
+                    # log episode length to wandb
+                    if USE_WANDB:
+                        wandb.log({'episode_length' : step_count})
+
                     all_obs = []
                     if self.use_symmetries:
                         for state,action,_ in observations:
@@ -144,7 +154,13 @@ class Worker(threading.Thread):
 
 
 def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
-    use_swig = True
+
+    # initialize wandb
+    if USE_WANDB:
+        run = wandb.init(project='alpha-zero',entity='pdrl-alpha-zero-2022')
+        wandb.config = HYPER_PARAMS
+
+    use_swig = False
     libtorch_use_gpu = False
 
     history_train_examples = deque([], maxlen=queue_length)
@@ -203,7 +219,7 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
 
         duelling = False
 
-        game = KInARow((8,8),4)
+        game = KInARow((3,3),3)
 
 
         adapting = False
@@ -235,6 +251,8 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
                 print("Error on saving new model")
 
     global_model.save_model(save_dir, 'final')
+    if USE_WANDB:
+        run.finish()
 
 
 if __name__ == '__main__':
