@@ -9,6 +9,12 @@ import torch.nn.functional as F
 
 import numpy as np
 
+try:
+    import wandb
+    USE_WANDB = True
+except ImportError:
+    USE_WANDB = False
+
 
 def conv3x3(i_channels, out_channels, stride=1):
     # 3x3 convolution
@@ -349,6 +355,9 @@ class AlphaZeroLoss(nn.Module):
     def forward(self, ps, vs, target_ps, target_vs):
         value_loss = torch.mean(torch.pow(vs - target_vs, 2))
         policy_loss = -torch.mean(torch.sum(target_ps * ps, 1))
+
+        if USE_WANDB:
+            wandb.log({'value_loss' : value_loss, 'policy_loss' : policy_loss, 'loss' : value_loss + policy_loss})
 
         return value_loss + policy_loss
 
