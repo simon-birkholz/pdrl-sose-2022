@@ -1,3 +1,5 @@
+import random
+
 import gym
 import boardgame2
 import numpy as np
@@ -18,29 +20,31 @@ HYPER_PARAMS = {
     'lr': 0.001,
     'l2': 0.0001,
     'n_layers': 4,
-    'n_channels': 64
+    'n_channels': 256,
+    'n' : 3
 }
 
-# model = NetworkWrapper(**HYPER_PARAMS)
-# model.load_model('training','checkpoint')
-swig_wrapper = NeuralNetwork('./training/checkpoint.pt', True, 10)
+model = NetworkWrapper(**HYPER_PARAMS)
+model.load_model('random_start_test','final')
+#swig_wrapper = NeuralNetwork('./training/checkpoint.pt', True, 10)
 
-board_size = (8, 8)
-k = 4
+board_size = (3, 3)
+k = 3
 
 env = KInARow(board_size, k)
-agent = AiPlayer(env, swig_wrapper, board_size, k, False, 100, 1)
+agent = AiPlayer(env, model, board_size, k, False, 100, 1)
 
 # play against a simple ai agent
 observation = env.reset()
 step_count = 0
+start_player = random.choice([0,1])
 while True:
     env.render()
     print("\n")
     step_count += 1
 
     selected_action = -1
-    if step_count % 2 == 1:
+    if step_count % 2 == start_player:
         selected_action = int(input("Enter your move: ")) - 1
     else:
         # selected_action = get_ai_move(m, observation)
