@@ -77,6 +77,7 @@ class Worker(threading.Thread):
         self.fallback_agent = RandomPlayer(self.env)
         self.action_space = BOARD_SIZE[0] * BOARD_SIZE[1]
         self.use_symmetries = True
+        self.random_start = 2 # make some random starting moves to improve learning
 
     def run(self):
 
@@ -97,6 +98,9 @@ class Worker(threading.Thread):
                 # self.env.render()
                 # print("State in cpp")
                 selected_action = 0
+                if step_count <= self.random_start:
+                    # sample random action
+                    selected_action = self.fallback_agent.get_action(observation)
                 if self.use_swig:
                     action_probs = mcts.search(SearchState(observation[0].flatten().tolist(), observation[1]))
                     #print(f"Node count: {mcts.get_node_count()} Max depth: {mcts.get_max_depth()}")
@@ -173,7 +177,7 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
 
     Worker.pBar = tqdm(total=n_iter)
 
-    its_per_ep = 20
+    its_per_ep = 10
 
     global_eps = int(n_iter / its_per_ep)
 
