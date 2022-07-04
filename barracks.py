@@ -161,8 +161,7 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
 
     # initialize wandb
     if USE_WANDB:
-        run = wandb.init(project='alpha-zero',entity='pdrl-alpha-zero-2022')
-        wandb.config = HYPER_PARAMS
+        run = wandb.init(project='alpha-zero',entity='pdrl-alpha-zero-2022',config=dict(params=HYPER_PARAMS))
 
     use_swig = False
     libtorch_use_gpu = False
