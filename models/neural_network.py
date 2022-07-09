@@ -176,15 +176,15 @@ class DenseBlock(nn.Module):
         out = self.relu(torch.cat([conv1, conv2], 1))
 
         conv3 = self.relu(self.conv3(out))
-        out = self.relu(torch.cat([conv1, conv2, conv3]), 1)
+        out = self.relu(torch.cat([conv1, conv2, conv3], 1))
 
         conv4 = self.relu(self.conv4(out))
         out = self.relu(torch.cat([conv1, conv2, conv3, conv4], 1))
 
         conv5 = self.relu(self.conv5(out))
-        out = self.relu(torch.cat([conv1, conv2, conv3, conv4, conv5], 1))
+        #out = self.relu(torch.cat([conv1, conv2, conv3, conv4, conv5], 1))
 
-        return out
+        return conv5
 
 
 def _make_dense_block(block, in_channels):
@@ -220,7 +220,8 @@ class DenseNetwork(nn.Module):
     def __init__(self, num_layers, num_channels, n, action_size):
         super(DenseNetwork, self).__init__()
 
-        self.conv = conv3x3(num_layers, num_channels)
+        self.conv = conv3x3(2, num_channels)
+        self.relu = nn.ReLU(inplace=True)
 
         # residual block
         dense_list = [DenseBlock(num_channels, num_channels) for _ in range(num_layers)]
@@ -384,6 +385,8 @@ class NetworkWrapper():
             self.neural_network = DenseNetwork(self.num_layers, self.num_channels, self.n, self.n ** 2)
         elif arch == 'senet':
             self.neural_network = DenseNetwork(self.num_layers, self.num_channels, self.n, self.n ** 2)
+        else:
+            raise ValueError("Unknown architecture")
 
 
         if self.train_use_gpu:
