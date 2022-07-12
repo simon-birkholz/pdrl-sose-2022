@@ -275,3 +275,9 @@ cython_debug/
 # End of https://www.toptal.com/developers/gitignore/api/python,pycharm
 /.idea
 /swig
+/dense_net_3x3
+/random_start_test
+/res_net_random_start
+/se_net_3x3_4
+/8x8_res_test
+/8x8_test

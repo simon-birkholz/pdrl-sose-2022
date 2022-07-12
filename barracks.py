@@ -45,7 +45,7 @@ HYPER_PARAMS = {
     'l2': 0.0001,
     'n_layers': 4,
     'n_channels': 256,
-    'arch': 'conv',
+    'arch': 'senet',
     'n': 3
 }
 
