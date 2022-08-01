@@ -1,6 +1,7 @@
 # Project Deep Reinforcement Learning
 
 An implementation for the AlphaZero Algorihm.
+Blabliblub.
 
 ## ToDo
 

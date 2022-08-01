@@ -6,6 +6,7 @@ from collections import deque
 import time
 import argparse
 import os
+import json
 
 import numpy as np
 from sklearn.utils import shuffle
@@ -33,22 +34,10 @@ import threading
 
 try:
     import wandb
+
     USE_WANDB = True
 except ImportError:
     USE_WANDB = False
-
-BOARD_SIZE = (3, 3)
-K = 3
-
-HYPER_PARAMS = {
-    'lr': 0.001,
-    'l2': 0.0001,
-    'n_layers': 4,
-    'n_channels': 256,
-    'arch': 'senet',
-    'n': 3
-}
-
 
 def expand_action(action, action_space):
     v = np.zeros(action_space)
@@ -61,9 +50,9 @@ class Worker(threading.Thread):
     pBar = tqdm()
     save_lock = threading.Lock()
 
-    def __init__(self, total_episodes, mcts_sims, global_model, result_queue, threads=1, use_swig=False):
+    def __init__(self, total_episodes, mcts_sims, global_model,board_size,k, threads=1, use_swig=False):
         super(Worker, self).__init__()
-        self.result_queue = result_queue
+
         self.global_model = global_model
 
         self.threads = threads
@@ -71,13 +60,13 @@ class Worker(threading.Thread):
         self.mcts_sims = mcts_sims
         self.experience = []
         self.use_swig = use_swig
-        self.board_shape = BOARD_SIZE
-        self.k = K
+        self.board_shape = board_size
+        self.k = k
         self.env = KInARow(self.board_shape, self.k)
         self.fallback_agent = RandomPlayer(self.env)
-        self.action_space = BOARD_SIZE[0] * BOARD_SIZE[1]
+        self.action_space = board_size[0] * board_size[1]
         self.use_symmetries = True
-        self.random_start = 2 # make some random starting moves to improve learning
+        self.random_start = 2  # make some random starting moves to improve learning
 
     def run(self):
 
@@ -103,8 +92,8 @@ class Worker(threading.Thread):
                     selected_action = self.fallback_agent.get_action(observation)
                 if self.use_swig:
                     action_probs = mcts.search(SearchState(observation[0].flatten().tolist(), observation[1]))
-                    #print(f"Node count: {mcts.get_node_count()} Max depth: {mcts.get_max_depth()}")
-                    #action_probs = list(action_probs)
+                    # print(f"Node count: {mcts.get_node_count()} Max depth: {mcts.get_max_depth()}")
+                    # action_probs = list(action_probs)
                     selected_action = np.argmax(action_probs)
 
                     # we need to propagate this the cpp tree
@@ -122,7 +111,7 @@ class Worker(threading.Thread):
                 valid = self.env.get_valid(observation)
                 valid = np.array(valid).flatten()
                 if not valid[selected_action]:
-                    #raise ValueError("Can't execute move, already executed")
+                    # raise ValueError("Can't execute move, already executed")
                     # mcts has returned garbage value, use random baseline as fallback and report warning
                     selected_action = self.fallback_agent.get_action(observation)
                     print(f"Warning: Using fallback agent to sample random move | critical move: {selected_action}")
@@ -135,20 +124,22 @@ class Worker(threading.Thread):
                 if done:
                     # log episode length to wandb
                     if USE_WANDB:
-                        wandb.log({'episode_length' : step_count})
+                        wandb.log({'episode_length': step_count})
 
                     all_obs = []
                     if self.use_symmetries:
-                        for state,action,_ in observations:
-                            states, actions = generate_symmetries(state,action)
-                            all_obs += [[s,a,None] for s,a in list(zip(states,actions))]
+                        for state, action, _ in observations:
+                            states, actions = generate_symmetries(state, action)
+                            all_obs += [[s, a, None] for s, a in list(zip(states, actions))]
                     else:
                         all_obs = observations
 
-                    exp = [(self.env.to_nn_view(x[0]), expand_action(x[1], self.action_space), (-1) ** (x[0][1] != reward)) for x in
-                           all_obs]
+                    exp = [
+                        (self.env.to_nn_view(x[0]), expand_action(x[1], self.action_space), (-1) ** (x[0][1] != reward))
+                        for x in
+                        all_obs]
                     self.experience.append(exp)
-                    #self.env.render()
+                    # self.env.render()
                     Worker.global_episode += 1
                     Worker.pBar.update(1)
                     if self.use_swig:
@@ -157,28 +148,21 @@ class Worker(threading.Thread):
                     break
 
 
-def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
-
+def learn(iterations, threads, save_dir, use_swig, libtorch_use_gpu, python_use_gpu, its_per_ep,sim_count,do_duelling, duelling_count, **config):
     # initialize wandb
     if USE_WANDB:
-        run = wandb.init(project='alpha-zero',entity='pdrl-alpha-zero-2022',config=dict(params=HYPER_PARAMS))
+        run = wandb.init(project='alpha-zero', entity='pdrl-alpha-zero-2022', config=dict(params=config))
 
-    use_swig = False
-    libtorch_use_gpu = False
-
-    history_train_examples = deque([], maxlen=queue_length)
-    global_model = NetworkWrapper(**HYPER_PARAMS, train_use_gpu=True, libtorch_use_gpu=libtorch_use_gpu)
+    global_model = NetworkWrapper(**config, train_use_gpu=python_use_gpu, libtorch_use_gpu=libtorch_use_gpu)
     global_model.save_model('training', 'checkpoint')
 
     swig_wrapper = None
     if use_swig:
         swig_wrapper = NeuralNetwork('./training/checkpoint.pt', libtorch_use_gpu, 10)
 
-    Worker.pBar = tqdm(total=n_iter)
+    Worker.pBar = tqdm(total=iterations)
 
-    its_per_ep = 10
-
-    global_eps = int(n_iter / its_per_ep)
+    global_eps = int(iterations / its_per_ep)
 
     w_threads = threads
     tree_threads = 1
@@ -191,9 +175,9 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
         Worker.global_episode = 0
 
         workers = [Worker(its_per_ep,
-                          100,
+                          sim_count,
                           swig_wrapper if use_swig else global_model,
-                          history_train_examples, tree_threads, use_swig) for i in range(w_threads)]
+                          tree_threads, use_swig) for i in range(w_threads)]
 
         for _, worker in enumerate(workers):
             worker.start()
@@ -212,7 +196,7 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
 
         global_model.save_model('training', 'checkpoint')
 
-        model_candidate = NetworkWrapper(**HYPER_PARAMS)
+        model_candidate = NetworkWrapper(**config)
         model_candidate.load_model('training', 'checkpoint')
 
         tData = list(zip(t_boards, t_actions, t_values))
@@ -220,24 +204,24 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
         model_candidate.train(tData, 32, 10)
         model_candidate.save_model('training', 'arena-new')
 
-        duelling = False
-
-        game = KInARow((3,3),3)
-
+        BOARD_SIZE = (int(config['n']),int(config['n']))
+        K = int(config['k'])
+        game = KInARow(BOARD_SIZE, K)
 
         adapting = False
-        if duelling:
+        if do_duelling:
             c = None
             if use_swig:
                 arena_wrapper = NeuralNetwork('./training/arena-new.pt', libtorch_use_gpu, 10)
-                c = Colosseum(game, AiPlayer(game, arena_wrapper, BOARD_SIZE, K, True, 100, 8),
-                              AiPlayer(game, swig_wrapper, BOARD_SIZE, K, True, 100, 8))
+                c = Colosseum(game, AiPlayer(game, arena_wrapper, BOARD_SIZE, K, True, sim_count, tree_threads),
+                              AiPlayer(game, swig_wrapper, BOARD_SIZE, K, True, sim_count, tree_threads))
             else:
-                c = Colosseum(game, AiPlayer(game, model_candidate,BOARD_SIZE,K, False, 100,1), AiPlayer(game, global_model,BOARD_SIZE,K, False, 100,1))
+                c = Colosseum(game, AiPlayer(game, model_candidate, BOARD_SIZE, K, False, sim_count, 1),
+                              AiPlayer(game, global_model, BOARD_SIZE, K, False, sim_count, 1))
             print("Now Duel models to find out if better")
-            n_wins, g_wins, draws = c.fight(32)
+            n_wins, g_wins, draws = c.fight(duelling_count)
             print(f"New model won {n_wins} games, old model won {g_wins} games.")
-            if n_wins > 16:
+            if n_wins > duelling_count // 2:
                 adapting = True
         else:
             adapting = True
@@ -249,7 +233,7 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
             if use_swig:
                 swig_wrapper.reload_weights()
             try:
-                global_model.save_model(save_dir, f'checkpoint-ep{i*its_per_ep}')
+                global_model.save_model(save_dir, f'checkpoint-ep{i * its_per_ep}')
             except:
                 print("Error on saving new model")
 
@@ -260,13 +244,13 @@ def learn(n_iter=100, queue_length=10, threads=1, save_dir='tmp'):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('iterations', type=int,
-                        help='Number of iterations learned')
-    parser.add_argument('--queue_size', type=int, default=10,
-                        help='Size of the replay buffer queue')
+    parser.add_argument('config_file', type=str, help='Config file for models')
     parser.add_argument('--out', type=str, help='name for saving the model', default='simple_agent')
-    parser.add_argument('--threads', type=int, default=1, help='Number of threads to parallelize the learning process')
 
     args = parser.parse_args()
-
-    learn(args.iterations, args.queue_size, args.threads, args.out)
+    if not os.path.exists(args.config_file):
+        raise ValueError("No config file found")
+    with open(args.config_file) as f:
+        config = json.load(f)
+    config['save_dir'] = args.out
+    learn(**config)

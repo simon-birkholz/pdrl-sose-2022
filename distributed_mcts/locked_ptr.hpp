@@ -12,7 +12,6 @@ namespace common
     using wrapped_ptr = std::shared_ptr<wrapped_t>;
 
     wrapped_ptr &operator->(void) { return wrapped_; }
-    wrapped_t &operator*(void) { return *wrapped_; }
 
     locked_ptr(locked_ptr const &) = delete;
     locked_ptr &operator=(locked_ptr const &) = delete;

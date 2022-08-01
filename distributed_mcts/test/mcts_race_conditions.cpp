@@ -37,7 +37,7 @@ TEST_CASE("Testing 3x3 Kinarow", "zero::kinarow")
   std::cout << "Init: Neural Network" << std::endl;
 
   std::shared_ptr<MonteCarloTreeSearch> search =
-      std::make_shared<MonteCarloTreeSearch>(nn.get(), board_shape, k, SIMS, 8);
+      std::make_shared<MonteCarloTreeSearch>(nn.get(), board_shape, k, SIMS, 1);
 
   std::cout << "Init: Monte Carlo Tree Search" << std::endl;
   std::vector<int> board(board_width * board_height, 0);
