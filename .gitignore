@@ -281,3 +281,8 @@ cython_debug/
 /se_net_3x3_4
 /8x8_res_test
 /8x8_test
+/wandb
+/swig_test
+/gpu_test
+/training
+/diagrams
