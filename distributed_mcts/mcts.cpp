@@ -100,7 +100,7 @@ int Node::select(const double c_p, const double c_loss)
 
 bool Node::expand(const std::vector<double>& prior_probabilites)
 {
-  std::lock_guard<std::recursive_mutex> lock(lock_);
+  //std::lock_guard<std::recursive_mutex> lock(lock_);
 
 
   if (!is_leaf_node())
@@ -276,7 +276,7 @@ void MonteCarloTreeSearch::simulate(KinaRow game)
 {
 wtf:
   D_MESS("Stated simulation of Game")
-  node_ptr node = root_;
+  locked_node_ptr node(root_->lock_,root_);
 
   while (true)
   {

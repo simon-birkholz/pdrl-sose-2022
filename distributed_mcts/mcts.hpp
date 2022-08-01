@@ -3,6 +3,7 @@
 #include "kinarow.hpp"
 #include "neural_network.hpp"
 #include "threadpool.hpp"
+#include "locked_ptr.hpp"
 
 #include <atomic>
 #include <map>
@@ -11,9 +12,11 @@
 #include <utility>
 #include <vector>
 
+
 class Node;
 
 using node_ptr = std::shared_ptr<Node>;
+using locked_node_ptr = common::locked_ptr<Node>;
 
 using search_t = std::pair<std::vector<int>, int>;
 class MonteCarloTreeSearch

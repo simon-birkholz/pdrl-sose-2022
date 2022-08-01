@@ -23,11 +23,12 @@ HYPER_PARAMS = {
     'l2': 0.0001,
     'n_layers': 4,
     'n_channels': 256,
-    'n' : 3
+    'n' : 3,
+    'arch' : 'resnet'
 }
 
 model = NetworkWrapper(**HYPER_PARAMS)
-model.load_model('random_start_test','final')
+model.load_model('res_net_random_start','final')
 #swig_wrapper = NeuralNetwork('./training/checkpoint.pt', True, 10)
 
 board_size = (3, 3)
