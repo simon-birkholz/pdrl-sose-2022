@@ -286,3 +286,4 @@ cython_debug/
 /gpu_test
 /training
 /diagrams
+first-tic-tac-toe-agent
