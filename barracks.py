@@ -39,6 +39,7 @@ try:
 except ImportError:
     USE_WANDB = False
 
+
 def expand_action(action, action_space):
     v = np.zeros(action_space)
     v[action] = 1
@@ -50,7 +51,7 @@ class Worker(threading.Thread):
     pBar = tqdm()
     save_lock = threading.Lock()
 
-    def __init__(self, total_episodes, mcts_sims, global_model,board_size,k, threads=1, use_swig=False):
+    def __init__(self, total_episodes, mcts_sims, global_model, board_size, k, threads=1, use_swig=False):
         super(Worker, self).__init__()
 
         self.global_model = global_model
@@ -148,12 +149,13 @@ class Worker(threading.Thread):
                     break
 
 
-def learn(iterations, threads, save_dir, use_swig, libtorch_use_gpu, python_use_gpu, its_per_ep,sim_count,do_duelling, duelling_count, **config):
+def learn(iterations, threads, save_dir, use_swig, libtorch_use_gpu, python_use_gpu, its_per_ep, sim_count, do_duelling,
+          duelling_count, **config):
     # initialize wandb
     if USE_WANDB:
         run = wandb.init(project='alpha-zero', entity='pdrl-alpha-zero-2022', config=dict(params=config))
 
-    global_model = NetworkWrapper(**config, train_use_gpu=python_use_gpu, libtorch_use_gpu=libtorch_use_gpu)
+    global_model = NetworkWrapper(train_use_gpu=python_use_gpu, libtorch_use_gpu=libtorch_use_gpu, **config)
     global_model.save_model('training', 'checkpoint')
 
     swig_wrapper = None
@@ -170,6 +172,9 @@ def learn(iterations, threads, save_dir, use_swig, libtorch_use_gpu, python_use_
         w_threads = 1
         tree_threads = threads
 
+    BOARD_SIZE = (int(config['n']), int(config['n']))
+    K = int(config['k'])
+
     for i in range(0, global_eps):
 
         Worker.global_episode = 0
@@ -177,6 +182,7 @@ def learn(iterations, threads, save_dir, use_swig, libtorch_use_gpu, python_use_
         workers = [Worker(its_per_ep,
                           sim_count,
                           swig_wrapper if use_swig else global_model,
+                          BOARD_SIZE, K,
                           tree_threads, use_swig) for i in range(w_threads)]
 
         for _, worker in enumerate(workers):
@@ -204,8 +210,6 @@ def learn(iterations, threads, save_dir, use_swig, libtorch_use_gpu, python_use_
         model_candidate.train(tData, 32, 10)
         model_candidate.save_model('training', 'arena-new')
 
-        BOARD_SIZE = (int(config['n']),int(config['n']))
-        K = int(config['k'])
         game = KInARow(BOARD_SIZE, K)
 
         adapting = False

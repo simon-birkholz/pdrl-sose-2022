@@ -365,7 +365,7 @@ class AlphaZeroLoss(nn.Module):
 
 class NetworkWrapper():
 
-    def __init__(self,n, lr, l2, n_layers, n_channels,arch = 'conv', train_use_gpu=False, libtorch_use_gpu=False):
+    def __init__(self,n, lr, l2, n_layers, n_channels,arch = 'conv', train_use_gpu=False, libtorch_use_gpu=False, **kwargs):
 
         self.num_channels = n_channels
         self.num_layers = n_layers
