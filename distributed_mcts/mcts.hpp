@@ -56,7 +56,6 @@ private:
   NeuralNetwork* network_;
   unsigned board_width_;
   unsigned board_height_;
-  double c_p_;
   double c_loss_;
   std::mutex lock_search_;
 };
@@ -80,10 +79,10 @@ public:
   }
   void back_propagate(double leaf_value);
 
-  int select(const double c_p, const double c_loss);
+  int select( const double c_loss);
   bool expand(const std::vector<double>& prior_probabilites);
 
-  double upper_confidence_bound(const double c_p, const double c_loss) const;
+  double upper_confidence_bound(const double c_loss) const;
 
   int get_node_count() const;
   int get_max_depth() const;

@@ -63,7 +63,7 @@ void Node::back_propagate(double leaf_value)
   }
 }
 
-int Node::select(const double c_p, const double c_loss)
+int Node::select(const double c_loss)
 {
   double max_ucb = std::numeric_limits<double>::lowest();
   int best_action = -1;
@@ -77,7 +77,7 @@ int Node::select(const double c_p, const double c_loss)
       continue;
     }
 
-    double ucb = node->upper_confidence_bound(c_p, c_loss);
+    double ucb = node->upper_confidence_bound(c_loss);
     if (ucb > max_ucb)
     {
       max_ucb = ucb;
@@ -121,10 +121,10 @@ bool Node::expand(const std::vector<double>& prior_probabilites)
   return true;
 }
 
-double Node::upper_confidence_bound(const double c_p, const double c_v) const
+double Node::upper_confidence_bound(const double c_v) const
 {
   const int N = visit_count_.load();
-  double U = c_p * prior_ / static_cast<double>(1 + N);
+  double U =  prior_ / static_cast<double>(1 + N);
 
   double v_loss = c_v * virtual_loss_.load();
   return action_value_ + U - v_loss;
@@ -162,8 +162,7 @@ MonteCarloTreeSearch::MonteCarloTreeSearch(
       board_width_(board_size.first),
       board_height_(board_size.second),
       k_(k),
-      c_p_(5),
-      c_loss_(3)
+      c_loss_(0.6)
 {}
 
 std::vector<double> MonteCarloTreeSearch::get_action_probabilites()
@@ -285,7 +284,7 @@ wtf:
       break;
     }
 
-    auto action = node->select(c_p_, c_loss_);
+    auto action = node->select(c_loss_);
 
     if (action >= 0)
     {
