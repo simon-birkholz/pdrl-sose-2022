@@ -3,6 +3,7 @@ include_guard(GLOBAL)
 set(target_name distributed_mcts)
 
 set(PROJECT_FILES
+${CMAKE_CURRENT_SOURCE_DIR}/log.hpp
 ${CMAKE_CURRENT_SOURCE_DIR}/mcts.hpp
 ${CMAKE_CURRENT_SOURCE_DIR}/mcts.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/neural_network.hpp
@@ -25,12 +26,14 @@ message("${TORCH_LIBRARIES}")
 #add_library(${target_name} SHARED ${PROJECT_FILES})
 set_property(SOURCE ${swig_file} PROPERTY CPLUSPLUS ON)
 
+set(deps extern_spdlog) 
+
 swig_add_library(${target_name} TYPE SHARED LANGUAGE python SOURCES 
 	${swig_file} ${PROJECT_FILES})
-swig_link_libraries(${target_name} ${PYTHON_LIBRARIES} ${TORCH_LIBRARIES})
+swig_link_libraries(${target_name} ${PYTHON_LIBRARIES} ${TORCH_LIBRARIES} ${deps})
 
 add_library(mcts_internal STATIC ${PROJECT_FILES})
-target_link_libraries(mcts_internal ${TORCH_LIBRARIES})
+target_link_libraries(mcts_internal ${TORCH_LIBRARIES} ${deps})
 
 target_compile_definitions(mcts_internal  PUBLIC ZERO_USE_CUDA)
 target_compile_definitions(${target_name} PUBLIC ZERO_USE_CUDA)

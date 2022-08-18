@@ -1,17 +1,8 @@
 #include "mcts.hpp"
 
+#include "log.hpp"
 #include "neural_network.hpp"
 
-//#define ZERO_DEBUG
-
-#ifdef ZERO_DEBUG
-  #define D_MESS(message) \
-    std::cout << message << " at " << __LINE__ << ":" << __FILE__ << std::endl;
-
-
-#else
-  #define D_MESS(message)
-#endif
 Node::Node()
     : parent_(nullptr),
       is_leaf_(true),
@@ -93,7 +84,7 @@ int Node::select(const double c_loss)
   }
   else
   {
-    D_MESS("Found race condition")
+    log_error("Found race condition in " + POS);
   }
   return best_action;
 }
@@ -116,7 +107,6 @@ bool Node::expand(const std::vector<double>& prior_probabilites)
     }
   }
 
-
   is_leaf_ = false;
   return true;
 }
@@ -124,7 +114,7 @@ bool Node::expand(const std::vector<double>& prior_probabilites)
 double Node::upper_confidence_bound(const double c_v) const
 {
   const int N = visit_count_.load();
-  double U =  prior_ / static_cast<double>(1 + N);
+  double U = prior_ / static_cast<double>(1 + N);
 
   double v_loss = c_v * virtual_loss_.load();
   return action_value_ + U - v_loss;
@@ -171,7 +161,9 @@ std::vector<double> MonteCarloTreeSearch::get_action_probabilites()
   const auto action_space = board_width_ * board_height_;
   std::vector<double> result(action_space, 0);
   int visit_sum = 0;
-  D_MESS("Containing " + std::to_string(root_->children_.size()) + " nodes")
+  log_debug(
+      "Search tree contains " + std::to_string(root_->children_.size()) +
+      " nodes");
   for (const auto& [action, child] : root_->children_)
   {
     int visit_count = child->visit_count_.load();
@@ -181,8 +173,9 @@ std::vector<double> MonteCarloTreeSearch::get_action_probabilites()
 
   if (visit_sum == 0)
   {
-    std::cerr << "Child count: " << root_->children_.size() << std::endl;
-    std::cerr << "Invalid state for mcts" << std::endl;
+    log_fatal(
+        "Search tree doesn't contains child nodes in " + POS +
+        ". Invalid state for MCTS");
   }
   for (int i = 0; i < action_space; i++)
   {
@@ -211,7 +204,7 @@ void MonteCarloTreeSearch::apply_action(int action)
     std::cout << std::endl;
     // start new search
     root_ = std::make_shared<Node>(nullptr, 1);
-    std::cout << "Started new Search on action " << action << std::endl;
+    log_warning("Started new Search on action " + std::to_string(action));
   }
 }
 
@@ -227,7 +220,7 @@ std::vector<double> MonteCarloTreeSearch::search(search_t game)
       board_height_ * board_width_ == game.first.size() &&
       "Board size must match initialized values");
   search_internal(game);
-  D_MESS("Completed Search");
+  log_debug("Completed search");
 
   KinaRow gWrapper(board_height_, board_width_, k_, game.first, game.second);
   //gWrapper.print_board();
@@ -241,7 +234,7 @@ void MonteCarloTreeSearch::search_internal(search_t game)
 
   for (int i = 0; i < n_sim_; i++)
   {
-    D_MESS(std::string(
+    log_debug(std::string(
         "Querying Sim " + std::to_string(i) + " of total " +
         std::to_string(n_sim_)));
 
@@ -264,17 +257,17 @@ void MonteCarloTreeSearch::search_internal(search_t game)
     }
     catch (const std::exception& e)
     {
-      std::cout << "Exception in threads after " << collect_count
-                << " simulations";
+      log_error(
+          "Exception in threads after " + std::to_string(collect_count) +
+          " simulations");
     }
-    D_MESS("Collected Thread")
+    log_debug("Collected Thread");
   }
 }
 
 void MonteCarloTreeSearch::simulate(KinaRow game)
 {
-wtf:
-  D_MESS("Stated simulation of Game")
+  log_debug("Stated simulation of Game");
   node_ptr node = root_;
 
   while (true)
@@ -299,16 +292,16 @@ wtf:
     }
   }
 
-  D_MESS("Selected Node")
+  log_debug("Selected Node");
   const auto action_space = board_width_ * board_height_;
   int status = game.get_winner();
   double value = 0;
   if (status == -2)
   {
-    D_MESS("Sending to Neural Network")
+    log_debug("Sending to Neural Network");
     auto future = network_->evaluate(&game);
     auto result = future.get();
-    D_MESS("Recieved from Neural Network")
+    log_debug("Recieved from Neural Network");
     std::vector<double> action_priors = std::move(result.first);
     assert(
         action_priors.size() == action_space &&
@@ -338,6 +331,7 @@ wtf:
       if (action_priors[i] < 0)
       {
         std::cout << "detected negative probability" << std::endl;
+        log_warning("detected negative probability in" + POS);
       }
       p_sum += action_priors[i];
     }
@@ -349,25 +343,25 @@ wtf:
     assert(p_sum > eps && "All actions are invalid");
     // TODO workaround if all actions invalid
 
-    D_MESS("Expanding Node");
+    log_debug("Expanding Node");
     bool was_expanded = node->expand(action_priors);
     if (!was_expanded)
     {
-      std::cerr << "Node was selected but already expanded" << std::endl;
+      log_error("Node was selected but already expanded");
     }
 
     if (action_count != node->children_.size())
     {
-      std::cout << "Invalid node state: child count mismatch" << std::endl;
+      log_error("Invalid node state: child count mismatch");
     }
   }
   else
   {
     value = status * game.get_player();
   }
-  D_MESS("Beginning Backpropagate");
+  log_debug("Beginning Backpropagate");
   node->back_propagate(-value);
-  D_MESS("Ended simulation of Game")
+  log_debug("Ended simulation of Game");
 }
 
 int MonteCarloTreeSearch::get_node_count() const
