@@ -216,7 +216,6 @@ void MonteCarloTreeSearch::reset()
 
 std::vector<double> MonteCarloTreeSearch::search(search_t game)
 {
-
   assert(
       board_height_ * board_width_ == game.first.size() &&
       "Board size must match initialized values");
@@ -224,7 +223,10 @@ std::vector<double> MonteCarloTreeSearch::search(search_t game)
   log_debug("Completed search");
 
   KinaRow gWrapper(board_height_, board_width_, k_, game.first, game.second);
-  //gWrapper.print_board();
+  if (root_->children_.size() == 0)
+  {
+    gWrapper.print_board();
+  }
   return get_action_probabilites();
 }
 
@@ -331,10 +333,13 @@ void MonteCarloTreeSearch::simulate(KinaRow game)
     {
       if (action_priors[i] < 0)
       {
-        std::cout << "detected negative probability" << std::endl;
         log_warning("detected negative probability in" + POS);
       }
       p_sum += action_priors[i];
+    }
+    if (p_sum < 1e-3)
+    {
+      log_warning("detected zero probabilty in" + POS);
     }
     for (int i = 0; i < action_space; i++)
     {

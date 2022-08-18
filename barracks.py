@@ -98,7 +98,7 @@ class Worker(threading.Thread):
                     selected_action = np.argmax(action_probs)
 
                     # we need to propagate this the cpp tree
-                    mcts.apply_action(int(selected_action))
+                    # mcts.apply_action(int(selected_action))
 
                 else:
                     selected_action = mcts.search(observation, self.mcts_sims)
@@ -106,6 +106,7 @@ class Worker(threading.Thread):
                     # mcts hasn't return valid value, use random baseline as fallback and report warning
                     selected_action = self.fallback_agent.get_action(observation)
                     print(f"Warning: Using fallback agent to sample random move | critical move: {selected_action} (step no. {step_count})")
+                    self.env.render()
 
                 # todo hide away because game specific
 
@@ -116,9 +117,12 @@ class Worker(threading.Thread):
                     # mcts has returned garbage value, use random baseline as fallback and report warning
                     selected_action = self.fallback_agent.get_action(observation)
                     print(f"Warning: Using fallback agent to sample random move | critical move: {selected_action} (step no. {step_count})")
+                    self.env.render()
                     if self.use_swig:
                         mcts.reset()
 
+                if self.use_swig:
+                    mcts.apply_action(int(selected_action))
 
                 selected = np.unravel_index(selected_action, observation[0].shape)
                 observations.append([observation, selected_action, None])

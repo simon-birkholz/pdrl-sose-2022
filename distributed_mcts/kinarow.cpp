@@ -112,4 +112,5 @@ void KinaRow::print_board() const
     }
     std::cout << std::endl;
   }
+  std::cout << std::endl;
 }
