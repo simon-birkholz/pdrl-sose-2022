@@ -14,6 +14,7 @@ public:
 
 public:
   std::vector<bool> get_valid() const;
+  bool is_possible(int action) const;
 
   int get_winner() const;
   int get_player() const { return player_; }

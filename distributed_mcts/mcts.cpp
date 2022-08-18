@@ -1,5 +1,4 @@
 #include "mcts.hpp"
-
 #include "log.hpp"
 #include "neural_network.hpp"
 

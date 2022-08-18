@@ -1,3 +1,5 @@
+#pragma once
+
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
@@ -76,7 +78,6 @@ void log_fatal(const T& m)
     s->critical(m);
   }
 }
-
 
 #define POS \
   (std::string(__FUNCTION__) + std::string(":") + std::to_string(__LINE__))

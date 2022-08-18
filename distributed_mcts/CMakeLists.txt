@@ -26,11 +26,13 @@ message("${TORCH_LIBRARIES}")
 #add_library(${target_name} SHARED ${PROJECT_FILES})
 set_property(SOURCE ${swig_file} PROPERTY CPLUSPLUS ON)
 
-set(deps extern_spdlog) 
+set(deps extern_spdlog)
 
 swig_add_library(${target_name} TYPE SHARED LANGUAGE python SOURCES 
 	${swig_file} ${PROJECT_FILES})
 swig_link_libraries(${target_name} ${PYTHON_LIBRARIES} ${TORCH_LIBRARIES} ${deps})
+
+set_target_properties(${target_name} PROPERTIES DEBUG_POSTFIX  "_d")
 
 add_library(mcts_internal STATIC ${PROJECT_FILES})
 target_link_libraries(mcts_internal ${TORCH_LIBRARIES} ${deps})
@@ -50,10 +52,11 @@ target_include_directories(mcts_internal  PUBLIC
 add_custom_command(TARGET ${target_name} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_BINARY_DIR}/${target_name}.py" ${SWIG_OUTPUT_DIR} )
 add_custom_command(TARGET ${target_name} POST_BUILD
                    COMMAND ${CMAKE_COMMAND} -E copy_directory
-                       "${CMAKE_CURRENT_BINARY_DIR}/Release/" ${SWIG_OUTPUT_DIR})
+                       "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/" ${SWIG_OUTPUT_DIR})
 # only copy release files because most of the time debug symbols aren't there
 
 include(test)
 add_zero_test(mcts_internal "mcts_internal")
 add_zero_test(kinarow_get_winner "mcts_internal")
 add_zero_test(mcts_race_conditions "mcts_internal")
+add_zero_test(mcts_stress_conditions "mcts_internal")

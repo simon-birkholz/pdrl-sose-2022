@@ -155,6 +155,7 @@ def learn(iterations, threads, save_dir, use_swig, libtorch_use_gpu, python_use_
     if USE_WANDB:
         run = wandb.init(project='alpha-zero', entity='pdrl-alpha-zero-2022', config=dict(params=config))
 
+
     global_model = NetworkWrapper(train_use_gpu=python_use_gpu, libtorch_use_gpu=libtorch_use_gpu, **config)
     global_model.save_model('training', 'checkpoint')
 
@@ -175,6 +176,8 @@ def learn(iterations, threads, save_dir, use_swig, libtorch_use_gpu, python_use_
     BOARD_SIZE = (int(config['n']), int(config['n']))
     K = int(config['k'])
 
+    input("Press to continue")
+
     for i in range(0, global_eps):
 
         Worker.global_episode = 0
@@ -184,6 +187,8 @@ def learn(iterations, threads, save_dir, use_swig, libtorch_use_gpu, python_use_
                           swig_wrapper if use_swig else global_model,
                           BOARD_SIZE, K,
                           tree_threads, use_swig) for i in range(w_threads)]
+
+
 
         for _, worker in enumerate(workers):
             worker.start()

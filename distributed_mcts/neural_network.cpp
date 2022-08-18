@@ -1,5 +1,4 @@
 #include "neural_network.hpp"
-
 #include "log.hpp"
 
 NeuralNetwork::NeuralNetwork(
