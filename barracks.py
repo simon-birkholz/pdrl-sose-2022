@@ -119,6 +119,7 @@ class Worker(threading.Thread):
                     if self.use_swig:
                         mcts.reset()
 
+
                 selected = np.unravel_index(selected_action, observation[0].shape)
                 observations.append([observation, selected_action, None])
                 observation, reward, done, info = self.env.step(selected)

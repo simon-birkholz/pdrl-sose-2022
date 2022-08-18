@@ -23,7 +23,7 @@ TEST_CASE("Testing 3x3 Kinarow", "zero::kinarow")
   spdlog::set_level(spdlog::level::info);
 
   std::string model =
-      "D:\\dev\\builds\\alpha-zero\\distributed_mcts\\Debug\\3x3.pt";
+      "D:\\dev\\builds\\alpha-zero\\distributed_mcts\\Debug\\defekt.pt";
 
   const int board_width = 3;
   const int board_height = 3;
@@ -51,6 +51,7 @@ TEST_CASE("Testing 3x3 Kinarow", "zero::kinarow")
     std::vector<int> board(board_width * board_height, 0);
 
     KinaRow wrapper(board_width, board_height, k, board, 1);
+    search->reset();
 
     while (wrapper.get_winner() == -2)
     {
@@ -72,4 +73,5 @@ TEST_CASE("Testing 3x3 Kinarow", "zero::kinarow")
       std::cout << ".";
     }
   }
+  std::cout << std::endl;
 }

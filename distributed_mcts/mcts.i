@@ -17,6 +17,7 @@
 %include <std_pair.i>
 %include <std_vector.i>
 
+%thread;
 %include "kinarow.hpp"
 %include "mcts.hpp"
  
@@ -30,6 +31,8 @@
     void reload_weights();
 
   };
+
+%nothread;
   
 %template(PII) std::pair<int,int>;
 %template(IntVector) std::vector<int>;

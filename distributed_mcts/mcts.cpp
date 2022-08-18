@@ -1,4 +1,5 @@
 #include "mcts.hpp"
+
 #include "log.hpp"
 #include "neural_network.hpp"
 
@@ -215,6 +216,7 @@ void MonteCarloTreeSearch::reset()
 
 std::vector<double> MonteCarloTreeSearch::search(search_t game)
 {
+
   assert(
       board_height_ * board_width_ == game.first.size() &&
       "Board size must match initialized values");
