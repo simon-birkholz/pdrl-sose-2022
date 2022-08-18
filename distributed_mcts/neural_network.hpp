@@ -28,6 +28,7 @@ public:
   void set_batch_size(unsigned batch_size) { this->batch_size_ = batch_size; }
 
   void reload_weights();
+  void unload_model();
 
   std::future<return_t> evaluate(KinaRow* game);
 
@@ -43,6 +44,6 @@ private:
   std::unique_ptr<std::thread> loop_;
   bool abort_;
   std::mutex model_lock_;
-  std::shared_ptr<torch::jit::script::Module> torch_;
+  std::unique_ptr<torch::jit::script::Module> torch_;
   std::string model_path_;
 };

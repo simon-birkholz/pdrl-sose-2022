@@ -1,4 +1,5 @@
 #include "neural_network.hpp"
+
 #include "log.hpp"
 
 NeuralNetwork::NeuralNetwork(
@@ -6,7 +7,7 @@ NeuralNetwork::NeuralNetwork(
     : use_gpu_(use_gpu),
       batch_size_(batch_size),
       model_path_(model_path),
-      torch_(std::make_shared<torch::jit::script::Module>(
+      torch_(std::make_unique<torch::jit::script::Module>(
           torch::jit::load(model_path.c_str()))),
       task_queue_(),
       abort_(false)
@@ -22,6 +23,11 @@ NeuralNetwork::NeuralNetwork(
   loop_ = std::make_unique<std::thread>([&] {
     while (!abort_)
     {
+      while (!torch_)
+      {
+        constexpr std::chrono::milliseconds timeout(100);
+        std::this_thread::sleep_for(timeout);
+      }
       intern();
     }
   });
@@ -50,6 +56,9 @@ void NeuralNetwork::intern()
       is_timeout = true;
     }
   }
+
+  if (!torch_)
+    return;
 
   if (states.size() == 0)
     return;
@@ -92,8 +101,14 @@ void NeuralNetwork::intern()
 void NeuralNetwork::reload_weights()
 {
   std::lock_guard<std::mutex> lock(model_lock_);
-  torch_ = std::make_shared<torch::jit::script::Module>(
+  torch_ = std::make_unique<torch::jit::script::Module>(
       torch::jit::load(model_path_.c_str()));
+}
+
+void NeuralNetwork::unload_model()
+{
+  std::lock_guard<std::mutex> lock(model_lock_);
+  torch_.reset();
 }
 
 NeuralNetwork::~NeuralNetwork()

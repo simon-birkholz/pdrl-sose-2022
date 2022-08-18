@@ -105,7 +105,7 @@ class Worker(threading.Thread):
                 if not selected_action >= 0:
                     # mcts hasn't return valid value, use random baseline as fallback and report warning
                     selected_action = self.fallback_agent.get_action(observation)
-                    print(f"Warning: Using fallback agent to sample random move | critical move: {selected_action}")
+                    print(f"Warning: Using fallback agent to sample random move | critical move: {selected_action} (step no. {step_count})")
 
                 # todo hide away because game specific
 
@@ -115,7 +115,7 @@ class Worker(threading.Thread):
                     # raise ValueError("Can't execute move, already executed")
                     # mcts has returned garbage value, use random baseline as fallback and report warning
                     selected_action = self.fallback_agent.get_action(observation)
-                    print(f"Warning: Using fallback agent to sample random move | critical move: {selected_action}")
+                    print(f"Warning: Using fallback agent to sample random move | critical move: {selected_action} (step no. {step_count})")
                     if self.use_swig:
                         mcts.reset()
 
@@ -177,8 +177,6 @@ def learn(iterations, threads, save_dir, use_swig, libtorch_use_gpu, python_use_
     BOARD_SIZE = (int(config['n']), int(config['n']))
     K = int(config['k'])
 
-    input("Press to continue")
-
     for i in range(0, global_eps):
 
         Worker.global_episode = 0
@@ -233,11 +231,16 @@ def learn(iterations, threads, save_dir, use_swig, libtorch_use_gpu, python_use_
             print(f"New model won {n_wins} games, old model won {g_wins} games.")
             if n_wins > duelling_count // 2:
                 adapting = True
+            del arena_wrapper
+            del c
         else:
             adapting = True
         if adapting:
             print("Adapting weights")
             # adapt new model weights
+            if use_swig:
+                # maybe need to be released from memory
+                swig_wrapper.unload_model()
             model_candidate.save_model('training', 'checkpoint')
             global_model.load_model('training', 'checkpoint')
             if use_swig:
