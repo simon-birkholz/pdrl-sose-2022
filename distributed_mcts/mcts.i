@@ -1,4 +1,4 @@
-%module distributed_mcts
+%module(threads="1") distributed_mcts
 
 
 %{
@@ -17,9 +17,10 @@
 %include <std_pair.i>
 %include <std_vector.i>
 
+%thread;
 %include "kinarow.hpp"
 %include "mcts.hpp"
- 
+%nothread;
   class NeuralNetwork
   {
   public:
@@ -27,6 +28,7 @@
     NeuralNetwork(std::string model_path, bool use_gpu, unsigned batch_size);
     void set_batch_size(unsigned batch_size) { this->batch_size_ = batch_size; }
 
+    void unload_model();
     void reload_weights();
 
   };

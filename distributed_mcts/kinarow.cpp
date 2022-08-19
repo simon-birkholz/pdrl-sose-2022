@@ -67,6 +67,8 @@ std::vector<bool> KinaRow::get_valid() const
   return std::move(res);
 }
 
+bool KinaRow::is_possible(int action) const { return board_[action] == 0; }
+
 int KinaRow::get_winner() const
 {
   if (check_won_player(1))
@@ -110,4 +112,5 @@ void KinaRow::print_board() const
     }
     std::cout << std::endl;
   }
+  std::cout << std::endl;
 }

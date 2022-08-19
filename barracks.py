@@ -91,23 +91,24 @@ class Worker(threading.Thread):
                 if step_count <= self.random_start:
                     # sample random action
                     selected_action = self.fallback_agent.get_action(observation)
-                if self.use_swig:
+                elif self.use_swig:
                     action_probs = mcts.search(SearchState(observation[0].flatten().tolist(), observation[1]))
                     # print(f"Node count: {mcts.get_node_count()} Max depth: {mcts.get_max_depth()}")
                     # action_probs = list(action_probs)
                     selected_action = np.argmax(action_probs)
 
                     # we need to propagate this the cpp tree
-                    mcts.apply_action(int(selected_action))
+                    # mcts.apply_action(int(selected_action))
 
                 else:
                     selected_action = mcts.search(observation, self.mcts_sims)
                 if not selected_action >= 0:
                     # mcts hasn't return valid value, use random baseline as fallback and report warning
                     selected_action = self.fallback_agent.get_action(observation)
-                    print(f"Warning: Using fallback agent to sample random move | critical move: {selected_action}")
+                    print(
+                        f"Warning: Using fallback agent to sample random move | critical move: {selected_action} (step no. {step_count})")
+                    # self.env.render()
 
-                # todo hide away because game specific
 
                 valid = self.env.get_valid(observation)
                 valid = np.array(valid).flatten()
@@ -115,9 +116,14 @@ class Worker(threading.Thread):
                     # raise ValueError("Can't execute move, already executed")
                     # mcts has returned garbage value, use random baseline as fallback and report warning
                     selected_action = self.fallback_agent.get_action(observation)
-                    print(f"Warning: Using fallback agent to sample random move | critical move: {selected_action}")
+                    print(
+                        f"Warning: Using fallback agent to sample random move | critical move: {selected_action} (step no. {step_count})")
+                    # self.env.render()
                     if self.use_swig:
                         mcts.reset()
+
+                if self.use_swig:
+                    mcts.apply_action(int(selected_action))
 
                 selected = np.unravel_index(selected_action, observation[0].shape)
                 observations.append([observation, selected_action, None])
@@ -149,11 +155,12 @@ class Worker(threading.Thread):
                     break
 
 
-def learn(iterations, threads, save_dir, use_swig, libtorch_use_gpu, python_use_gpu, its_per_ep, sim_count, do_duelling,
-          duelling_count, **config):
+def learn(allparams, iterations, threads, save_dir, use_swig, libtorch_use_gpu, python_use_gpu, its_per_ep, sim_count,
+          do_duelling,
+          duelling_count, training_epochs, training_batchsize, **config):
     # initialize wandb
     if USE_WANDB:
-        run = wandb.init(project='alpha-zero', entity='pdrl-alpha-zero-2022', config=dict(params=config))
+        run = wandb.init(project='alpha-zero', entity='pdrl-alpha-zero-2022', config=dict(params=allparams))
 
     global_model = NetworkWrapper(train_use_gpu=python_use_gpu, libtorch_use_gpu=libtorch_use_gpu, **config)
     global_model.save_model('training', 'checkpoint')
@@ -207,7 +214,7 @@ def learn(iterations, threads, save_dir, use_swig, libtorch_use_gpu, python_use_
 
         tData = list(zip(t_boards, t_actions, t_values))
 
-        model_candidate.train(tData, 32, 10)
+        model_candidate.train(tData, training_batchsize, training_epochs)
         model_candidate.save_model('training', 'arena-new')
 
         game = KInARow(BOARD_SIZE, K)
@@ -227,11 +234,16 @@ def learn(iterations, threads, save_dir, use_swig, libtorch_use_gpu, python_use_
             print(f"New model won {n_wins} games, old model won {g_wins} games.")
             if n_wins > duelling_count // 2:
                 adapting = True
+            del arena_wrapper
+            del c
         else:
             adapting = True
         if adapting:
             print("Adapting weights")
             # adapt new model weights
+            if use_swig:
+                # maybe need to be released from memory
+                swig_wrapper.unload_model()
             model_candidate.save_model('training', 'checkpoint')
             global_model.load_model('training', 'checkpoint')
             if use_swig:
@@ -257,4 +269,5 @@ if __name__ == '__main__':
     with open(args.config_file) as f:
         config = json.load(f)
     config['save_dir'] = args.out
-    learn(**config)
+    allparams = config.copy()
+    learn(allparams, **config)

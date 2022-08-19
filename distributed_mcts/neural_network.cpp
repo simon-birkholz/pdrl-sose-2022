@@ -1,21 +1,13 @@
 #include "neural_network.hpp"
 
-//#define ZERO_DEBUG
-
-#ifdef ZERO_DEBUG
-  #define D_MESS(message) \
-    std::cout << message << " at " << __LINE__ << ":" << __FILE__ << std::endl;
-#else
-  #define D_MESS(message)
-#endif
-
+#include "log.hpp"
 
 NeuralNetwork::NeuralNetwork(
     std::string model_path, bool use_gpu, unsigned batch_size)
     : use_gpu_(use_gpu),
       batch_size_(batch_size),
       model_path_(model_path),
-      torch_(std::make_shared<torch::jit::script::Module>(
+      torch_(std::make_unique<torch::jit::script::Module>(
           torch::jit::load(model_path.c_str()))),
       task_queue_(),
       abort_(false)
@@ -31,6 +23,11 @@ NeuralNetwork::NeuralNetwork(
   loop_ = std::make_unique<std::thread>([&] {
     while (!abort_)
     {
+      while (!torch_)
+      {
+        constexpr std::chrono::milliseconds timeout(100);
+        std::this_thread::sleep_for(timeout);
+      }
       intern();
     }
   });
@@ -60,9 +57,12 @@ void NeuralNetwork::intern()
     }
   }
 
+  if (!torch_)
+    return;
+
   if (states.size() == 0)
     return;
-  D_MESS("Collected batch of size " + states.size())
+  log_debug("Collected batch of size " + states.size());
 
 #if ZERO_USE_CUDA
   std::vector<torch::jit::IValue> to_network{
@@ -71,9 +71,9 @@ void NeuralNetwork::intern()
   std::vector<torch::jit::IValue> to_network{torch::cat(states, 0)};
 #endif
 
-  D_MESS("Sending to torch " + states.size())
+  log_debug("Sending to torch " + states.size());
   auto res = torch_->forward(to_network).toTuple();
-  D_MESS("Recieved from torch " + states.size())
+  log_debug("Recieved from torch " + states.size());
 
   torch::Tensor p_Batch =
       res->elements()[0].toTensor().exp().toType(torch::kFloat32).to(at::kCPU);
@@ -101,8 +101,14 @@ void NeuralNetwork::intern()
 void NeuralNetwork::reload_weights()
 {
   std::lock_guard<std::mutex> lock(model_lock_);
-  torch_ = std::make_shared<torch::jit::script::Module>(
+  torch_ = std::make_unique<torch::jit::script::Module>(
       torch::jit::load(model_path_.c_str()));
+}
+
+void NeuralNetwork::unload_model()
+{
+  std::lock_guard<std::mutex> lock(model_lock_);
+  torch_.reset();
 }
 
 NeuralNetwork::~NeuralNetwork()
