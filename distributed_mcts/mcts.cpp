@@ -196,15 +196,15 @@ void MonteCarloTreeSearch::apply_action(int action)
   }
   else
   {
-    std::cout << "Node has actions ";
-    for (const auto& [action, child] : root_->children_)
-    {
-      std::cout << action << " ";
-    }
-    std::cout << std::endl;
+    //std::cout << "Node has actions ";
+    //for (const auto& [action, child] : root_->children_)
+    //{
+    //  std::cout << action << " ";
+    //}
+    //std::cout << std::endl;
     // start new search
     root_ = std::make_shared<Node>(nullptr, 1);
-    log_warning("Started new Search on action " + std::to_string(action));
+    log_debug("Started new Search on action " + std::to_string(action));
   }
 }
 
@@ -223,10 +223,10 @@ std::vector<double> MonteCarloTreeSearch::search(search_t game)
   log_debug("Completed search");
 
   KinaRow gWrapper(board_height_, board_width_, k_, game.first, game.second);
-  if (root_->children_.size() == 0)
-  {
-    gWrapper.print_board();
-  }
+  //if (root_->children_.size() == 0)
+  //{
+  //  gWrapper.print_board();
+  //}
   return get_action_probabilites();
 }
 

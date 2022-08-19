@@ -91,7 +91,7 @@ class Worker(threading.Thread):
                 if step_count <= self.random_start:
                     # sample random action
                     selected_action = self.fallback_agent.get_action(observation)
-                if self.use_swig:
+                elif self.use_swig:
                     action_probs = mcts.search(SearchState(observation[0].flatten().tolist(), observation[1]))
                     # print(f"Node count: {mcts.get_node_count()} Max depth: {mcts.get_max_depth()}")
                     # action_probs = list(action_probs)
@@ -105,10 +105,10 @@ class Worker(threading.Thread):
                 if not selected_action >= 0:
                     # mcts hasn't return valid value, use random baseline as fallback and report warning
                     selected_action = self.fallback_agent.get_action(observation)
-                    print(f"Warning: Using fallback agent to sample random move | critical move: {selected_action} (step no. {step_count})")
-                    self.env.render()
+                    print(
+                        f"Warning: Using fallback agent to sample random move | critical move: {selected_action} (step no. {step_count})")
+                    # self.env.render()
 
-                # todo hide away because game specific
 
                 valid = self.env.get_valid(observation)
                 valid = np.array(valid).flatten()
@@ -116,8 +116,9 @@ class Worker(threading.Thread):
                     # raise ValueError("Can't execute move, already executed")
                     # mcts has returned garbage value, use random baseline as fallback and report warning
                     selected_action = self.fallback_agent.get_action(observation)
-                    print(f"Warning: Using fallback agent to sample random move | critical move: {selected_action} (step no. {step_count})")
-                    self.env.render()
+                    print(
+                        f"Warning: Using fallback agent to sample random move | critical move: {selected_action} (step no. {step_count})")
+                    # self.env.render()
                     if self.use_swig:
                         mcts.reset()
 
@@ -154,12 +155,12 @@ class Worker(threading.Thread):
                     break
 
 
-def learn(iterations, threads, save_dir, use_swig, libtorch_use_gpu, python_use_gpu, its_per_ep, sim_count, do_duelling,
-          duelling_count, **config):
+def learn(allparams, iterations, threads, save_dir, use_swig, libtorch_use_gpu, python_use_gpu, its_per_ep, sim_count,
+          do_duelling,
+          duelling_count, training_epochs, training_batchsize, **config):
     # initialize wandb
     if USE_WANDB:
-        run = wandb.init(project='alpha-zero', entity='pdrl-alpha-zero-2022', config=dict(params=config))
-
+        run = wandb.init(project='alpha-zero', entity='pdrl-alpha-zero-2022', config=dict(params=allparams))
 
     global_model = NetworkWrapper(train_use_gpu=python_use_gpu, libtorch_use_gpu=libtorch_use_gpu, **config)
     global_model.save_model('training', 'checkpoint')
@@ -191,8 +192,6 @@ def learn(iterations, threads, save_dir, use_swig, libtorch_use_gpu, python_use_
                           BOARD_SIZE, K,
                           tree_threads, use_swig) for i in range(w_threads)]
 
-
-
         for _, worker in enumerate(workers):
             worker.start()
 
@@ -215,7 +214,7 @@ def learn(iterations, threads, save_dir, use_swig, libtorch_use_gpu, python_use_
 
         tData = list(zip(t_boards, t_actions, t_values))
 
-        model_candidate.train(tData, 32, 10)
+        model_candidate.train(tData, training_batchsize, training_epochs)
         model_candidate.save_model('training', 'arena-new')
 
         game = KInARow(BOARD_SIZE, K)
@@ -270,4 +269,5 @@ if __name__ == '__main__':
     with open(args.config_file) as f:
         config = json.load(f)
     config['save_dir'] = args.out
-    learn(**config)
+    allparams = config.copy()
+    learn(allparams, **config)
