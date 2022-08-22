@@ -165,7 +165,7 @@ def learn(allparams, iterations, threads, save_dir, use_swig, libtorch_use_gpu, 
     if USE_WANDB:
         run = wandb.init(project='alpha-zero', entity='pdrl-alpha-zero-2022', config=dict(params=allparams))
 
-    last_episode = max([int(ep) for f in glob.glob(save_dir + '/*.pt') for ep in re.findall(r'\d+',f)])
+    last_episode = max([int(ep) for f in glob.glob(save_dir + '/*.pt') for ep in re.findall(r'\d+',f)] + [0])
 
 
 
