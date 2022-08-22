@@ -8,6 +8,9 @@ import argparse
 import os
 import json
 
+import glob
+import re
+
 import numpy as np
 from sklearn.utils import shuffle
 
@@ -162,17 +165,26 @@ def learn(allparams, iterations, threads, save_dir, use_swig, libtorch_use_gpu, 
     if USE_WANDB:
         run = wandb.init(project='alpha-zero', entity='pdrl-alpha-zero-2022', config=dict(params=allparams))
 
+    last_episode = max([int(ep) for f in glob.glob(save_dir + '/*.pt') for ep in re.findall(r'\d+',f)] + [0])
+
+
+
     global_model = NetworkWrapper(train_use_gpu=python_use_gpu, libtorch_use_gpu=libtorch_use_gpu, **config)
+
+    if last_episode > 0:
+        global_model.load_model(save_dir,f'checkpoint-ep{last_episode}')
+        print(f"Reloading model checkpoint-ep{last_episode}")
+
     global_model.save_model('training', 'checkpoint')
 
     swig_wrapper = None
     if use_swig:
         swig_wrapper = NeuralNetwork('./training/checkpoint.pt', libtorch_use_gpu, 10)
 
-    Worker.pBar = tqdm(total=iterations)
+    Worker.pBar = tqdm(total=iterations-last_episode)
 
     global_eps = int(iterations / its_per_ep)
-
+    last_glob_ep = last_episode // its_per_ep
     w_threads = threads
     tree_threads = 1
     if use_swig:
@@ -182,7 +194,7 @@ def learn(allparams, iterations, threads, save_dir, use_swig, libtorch_use_gpu, 
     BOARD_SIZE = (int(config['n']), int(config['n']))
     K = int(config['k'])
 
-    for i in range(0, global_eps):
+    for i in range(last_glob_ep, global_eps):
 
         Worker.global_episode = 0
 
@@ -195,7 +207,9 @@ def learn(allparams, iterations, threads, save_dir, use_swig, libtorch_use_gpu, 
         for _, worker in enumerate(workers):
             worker.start()
 
-        [w.join() for w in workers]
+        for w in workers:
+            w.join()
+
         all_exp = [w.experience for w in workers]
         all_exp = [x for xs in all_exp for x in xs]
         all_exp = [x for xs in all_exp for x in xs]
@@ -249,7 +263,7 @@ def learn(allparams, iterations, threads, save_dir, use_swig, libtorch_use_gpu, 
             if use_swig:
                 swig_wrapper.reload_weights()
             try:
-                global_model.save_model(save_dir, f'checkpoint-ep{i * its_per_ep}')
+                global_model.save_model(save_dir, f'checkpoint-ep{(i+1) * its_per_ep}')
             except:
                 print("Error on saving new model")
 

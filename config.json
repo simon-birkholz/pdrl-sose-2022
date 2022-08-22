@@ -10,11 +10,11 @@
   "n_layers": 4,
   "n_channels": 256,
   "arch": "conv",
-  "n": 3,
-  "k": 3,
+  "n": 6,
+  "k": 4,
   "sim_count": 100,
   "do_duelling": false,
   "duelling_count": 32,
   "training_epochs": 10,
-  "training_batchsize": 100
+  "training_batchsize": 512
 }
