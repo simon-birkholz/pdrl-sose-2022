@@ -84,6 +84,7 @@ class Worker(threading.Thread):
             else:
                 mcts = old_mcts.MonteCarloTreeSearch(self.env, self.global_model)
             step_count = 0
+            start_time = time.perf_counter()
             while True:
                 step_count += 1
                 # todo return policy vector for learning
@@ -112,7 +113,6 @@ class Worker(threading.Thread):
                         f"Warning: Using fallback agent to sample random move | critical move: {selected_action} (step no. {step_count})")
                     # self.env.render()
 
-
                 valid = self.env.get_valid(observation)
                 valid = np.array(valid).flatten()
                 if not valid[selected_action]:
@@ -134,7 +134,8 @@ class Worker(threading.Thread):
                 if done:
                     # log episode length to wandb
                     if USE_WANDB:
-                        wandb.log({'episode_length': step_count})
+                        elapsed_time = time.perf_counter() - start_time
+                        wandb.log({'episode_length': step_count, 'elapsed_time': elapsed_time})
 
                     all_obs = []
                     if self.use_symmetries:
@@ -165,14 +166,12 @@ def learn(allparams, iterations, threads, save_dir, use_swig, libtorch_use_gpu, 
     if USE_WANDB:
         run = wandb.init(project='alpha-zero', entity='pdrl-alpha-zero-2022', config=dict(params=allparams))
 
-    last_episode = max([int(ep) for f in glob.glob(save_dir + '/*.pt') for ep in re.findall(r'\d+',f)] + [0])
-
-
+    last_episode = max([int(ep) for f in glob.glob(save_dir + '/*.pt') for ep in re.findall(r'\d+', f)] + [0])
 
     global_model = NetworkWrapper(train_use_gpu=python_use_gpu, libtorch_use_gpu=libtorch_use_gpu, **config)
 
     if last_episode > 0:
-        global_model.load_model(save_dir,f'checkpoint-ep{last_episode}')
+        global_model.load_model(save_dir, f'checkpoint-ep{last_episode}')
         print(f"Reloading model checkpoint-ep{last_episode}")
 
     global_model.save_model('training', 'checkpoint')
@@ -181,7 +180,7 @@ def learn(allparams, iterations, threads, save_dir, use_swig, libtorch_use_gpu, 
     if use_swig:
         swig_wrapper = NeuralNetwork('./training/checkpoint.pt', libtorch_use_gpu, 10)
 
-    Worker.pBar = tqdm(total=iterations-last_episode)
+    Worker.pBar = tqdm(total=iterations - last_episode)
 
     global_eps = int(iterations / its_per_ep)
     last_glob_ep = last_episode // its_per_ep
@@ -263,7 +262,7 @@ def learn(allparams, iterations, threads, save_dir, use_swig, libtorch_use_gpu, 
             if use_swig:
                 swig_wrapper.reload_weights()
             try:
-                global_model.save_model(save_dir, f'checkpoint-ep{(i+1) * its_per_ep}')
+                global_model.save_model(save_dir, f'checkpoint-ep{(i + 1) * its_per_ep}')
             except:
                 print("Error on saving new model")
 
