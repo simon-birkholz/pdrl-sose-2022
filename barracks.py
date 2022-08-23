@@ -132,11 +132,6 @@ class Worker(threading.Thread):
                 observations.append([observation, selected_action, None])
                 observation, reward, done, info = self.env.step(selected)
                 if done:
-                    # log episode length to wandb
-                    if USE_WANDB:
-                        elapsed_time = time.perf_counter() - start_time
-                        wandb.log({'episode_length': step_count, 'elapsed_time': elapsed_time})
-
                     all_obs = []
                     if self.use_symmetries:
                         for state, action, _ in observations:
@@ -155,6 +150,11 @@ class Worker(threading.Thread):
                     Worker.pBar.update(1)
                     if self.use_swig:
                         mcts.reset()
+
+                    # log episode length to wandb
+                    if USE_WANDB:
+                        elapsed_time = time.perf_counter() - start_time
+                        wandb.log({'episode_length': step_count, 'elapsed_time': elapsed_time})
                     # :/ sneaky bastard
                     break
 
