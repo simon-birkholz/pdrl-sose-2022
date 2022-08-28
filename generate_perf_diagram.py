@@ -1,3 +1,5 @@
+import os.path
+
 from ai_player import AiPlayer
 from baselines import RandomPlayer, GreedyPlayer
 from colosseum import Colosseum
@@ -9,26 +11,26 @@ import pickle
 
 from tqdm import tqdm
 
-BOARD_SIZE = (3, 3)
-K = 3
+BOARD_SIZE = (6, 6)
+K = 4
 
 PARAMS_1 = {
     'lr': 0.001,
     'l2': 0.0001,
-    'n_layers': 4,
+    'n_layers': 12,
     'n_channels': 256,
     'arch': 'conv',
-    'n': 3
+    'n': 6
 }
 
 
 PARAMS_2 = {
     'lr': 0.001,
     'l2': 0.0001,
-    'n_layers': 1,
+    'n_layers': 12,
     'n_channels': 256,
-    'arch': 'densenet',
-    'n': 3
+    'arch': 'conv',
+    'n': 6
 }
 
 
@@ -72,11 +74,11 @@ def get_model_performances(m1_folder, m2_folder):
     c = Colosseum(game, player1,
                   player2)
 
-    max_eps = 5000
+    max_eps = 2000
     delta_eps = 200
 
     result = []
-    for episode in tqdm(range(0, max_eps, delta_eps)):
+    for episode in tqdm(range(delta_eps, max_eps, delta_eps)):
         model1.load_model(m1_folder, f'checkpoint-ep{episode}')
         model2.load_model(m2_folder, f'checkpoint-ep{episode}')
 
@@ -87,9 +89,9 @@ def get_model_performances(m1_folder, m2_folder):
 
 
 if __name__ == '__main__':
-    f_name = 'conv_vs_dense_net'
-    m_name = 'random_start_test'
-    m_name2 = 'dense_net_3x3'
+    f_name = '6x4_conv_lr0.1_vs_6x4_conv_lr0.01'
+    m_name = '6x4_conv_lr0.1'
+    m_name2 = '6x4_conv_lr0.01'
 
     #val = None
     #with open(f'{f_name}.pickle', 'rb') as f:
@@ -97,7 +99,9 @@ if __name__ == '__main__':
 
     val = get_model_performances(m_name,m_name2)
 
-    with open(f'{f_name}.pickle','wb') as f:
+    if not os.path.exists('experiments/evaluation'):
+        os.mkdir('experiments/evaluation')
+    with open(f'experiments/evaluation/{f_name}.pickle','wb') as f:
         pickle.dump(val,f)
 
     make_bar_plot_stacked(val,f_name)
