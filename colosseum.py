@@ -35,6 +35,7 @@ class Colosseum:
             observation = self.game.reset()
             self.player1.reset()
             self.player2.reset()
+            self.fallback_agent.reset()
             step_count = 0
             sPlayer = randrange(2)
             while True:
@@ -45,8 +46,6 @@ class Colosseum:
                 else:
                     selected_action = self.player2.get_action(observation)
 
-                selected = np.unravel_index(selected_action, observation[0].shape)
-
                 # include fallback
                 valid = self.game.get_valid(observation)
                 valid = np.array(valid).flatten()
@@ -55,6 +54,7 @@ class Colosseum:
                     print(
                         f"Warning: Using fallback agent to sample random move | critical move: {selected_action} (step no. {step_count})")
 
+                selected = np.unravel_index(selected_action, observation[0].shape)
 
                 self.player1.inform(selected_action)
                 self.player2.inform(selected_action)
