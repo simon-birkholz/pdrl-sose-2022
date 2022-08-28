@@ -24,6 +24,7 @@ class Colosseum:
         self.game = game
         self.player1 = player1
         self.player2 = player2
+        self.fallback_agent = RandomPlayer(self.game)
 
     def fight(self, game_count=100):
         p1_winCount = 0
@@ -45,6 +46,15 @@ class Colosseum:
                     selected_action = self.player2.get_action(observation)
 
                 selected = np.unravel_index(selected_action, observation[0].shape)
+
+                # include fallback
+                valid = self.game.get_valid(observation)
+                valid = np.array(valid).flatten()
+                if not selected_action >= 0 or not valid[selected_action]:
+                    selected_action = self.fallback_agent.get_action(observation)
+                    print(
+                        f"Warning: Using fallback agent to sample random move | critical move: {selected_action} (step no. {step_count})")
+
 
                 self.player1.inform(selected_action)
                 self.player2.inform(selected_action)
