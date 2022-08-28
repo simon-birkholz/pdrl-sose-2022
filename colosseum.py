@@ -31,7 +31,7 @@ class Colosseum:
         p2_winCount = 0
         drawCount = 0
 
-        for i in tqdm(range(0, game_count)):
+        for i in tqdm(range(0, game_count)) if game_count > 1 else range(0, game_count):
             observation = self.game.reset()
             self.player1.reset()
             self.player2.reset()

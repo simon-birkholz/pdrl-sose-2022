@@ -45,3 +45,5 @@ if __name__ == '__main__':
                           'tab:green')
     make_bar_plot_stacked('6x4_conv_lr0.1_vs_6x4_conv_lr0.001', 'Conv (lr=0.1)', 'Conv (lr=0.001)', 'tab:red',
                           'tab:blue')
+    make_bar_plot_stacked('6x4_conv_lr0.01_vs_6x4_conv_lr0.001', 'Conv (lr=0.01)', 'Conv (lr=0.001)', 'tab:green',
+                          'tab:blue')
