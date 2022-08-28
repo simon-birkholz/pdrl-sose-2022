@@ -54,6 +54,10 @@ class Colosseum:
                     print(
                         f"Warning: Using fallback agent to sample random move | critical move: {selected_action} (step no. {step_count})")
 
+                # first move random for better exploration:
+                if step_count == 1:
+                    selected_action = self.fallback_agent.get_action(observation)
+
                 selected = np.unravel_index(selected_action, observation[0].shape)
 
                 self.player1.inform(selected_action)

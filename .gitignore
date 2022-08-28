@@ -295,3 +295,8 @@ first-tic-tac-toe-agent
 /6x4_conv_lr0.01
 /6x4_conv_lr0.1
 /6x4_dense_lr0.1
+/6x4_resnet_lr0.1
+/6x4_densenet_lr0.01
+/6x4_densenet_lr0.1
+/6x4_resnet_lr0.001
+/6x4_resnet_lr0.01
