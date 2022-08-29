@@ -25,7 +25,7 @@ ELO_K = 20
 
 players = {'random': RandomPlayer(env), 'greedy': GreedyPlayer(env)}
 
-model_names = ['6x4_conv_lr0.1', '6x4_conv_lr0.01', '6x4_conv_lr0.001', '6x4_conv_lr0.1', '6x4_resnet_lr0.1',
+model_names = ['6x4_conv_lr0.1', '6x4_conv_lr0.01', '6x4_conv_lr0.001', '6x4_resnet_lr0.1',
                '6x4_resnet_lr0.01', '6x4_resnet_lr0.001', '6x4_densenet_lr0.1', '6x4_densenet_lr0.01',
                '6x4_densenet_lr0.001']
 
@@ -90,7 +90,7 @@ for sim in tqdm(range(0,SIM_COUNT)):
     scores[player2] = n_elo2
 
     if sim % 10 == 0:
-        elo_delta = sum([scores[p] - prev_scores[p] for p in players.keys()])
+        elo_delta = sum([abs(scores[p] - prev_scores[p]) for p in players.keys()])
 
         print(f"All elo changed by {elo_delta}")
 

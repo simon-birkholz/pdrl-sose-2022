@@ -21,18 +21,18 @@ USE_SWIG = True
 PARAMS_1 = {
     'lr': 0.001,
     'l2': 0.0001,
-    'n_layers': 12,
+    'n_layers': 4,
     'n_channels': 256,
-    'arch': 'conv',
+    'arch': 'densenet',
     'n': 6
 }
 
 PARAMS_2 = {
     'lr': 0.001,
     'l2': 0.0001,
-    'n_layers': 12,
+    'n_layers': 3,
     'n_channels': 256,
-    'arch': 'conv',
+    'arch': 'densenet',
     'n': 6
 }
 
@@ -110,9 +110,9 @@ def get_model_performances(m1_folder, m2_folder):
 
 
 if __name__ == '__main__':
-    f_name = '6x4_conv_lr0.01_vs_6x4_conv_lr0.001'
-    m_name = '6x4_conv_lr0.01'
-    m_name2 = '6x4_conv_lr0.001'
+    f_name = '6x4_densenet_lr0.01_vs_6x4_densenet_lr0.001'
+    m_name = '6x4_densenet_lr0.01'
+    m_name2 = '6x4_densenet_lr0.001'
 
     # val = None
     # with open(f'{f_name}.pickle', 'rb') as f:
