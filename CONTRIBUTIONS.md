@@ -22,9 +22,8 @@ by only one person, there were generally revised by both of us.
         2.5.4 Games [Simon Birkholz]
         2.5.5 Training [Simon Birkholz]
 ### 3 Experiments
-    3.1 Configurations [Shared]
-        3.1.1 Perfomance [Simon Birkholz]
-    3.2 Procedure [Shared]
+    3.1 Configurations and Procedure [Shared]
+        3.1.1 Performance [Simon Birkholz]
         3.2.1 Baselines [Tom Speier]
         3.2.2 Evaluation [Simon Birkholz]
     3.3 Hyperparameters [Simon Birkholz]

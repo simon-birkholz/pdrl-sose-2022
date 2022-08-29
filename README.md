@@ -1,7 +1,7 @@
 # Project Deep Reinforcement Learning
 
-An implementation for the AlphaZero Algorihm.
-Blabliblub.
+AlphaZero is an Reinforcement Learning algorithm that leverages Neural Networks, a Monte Carlo Tree Search and self-play to perform with superhuman performance in the classic games of Go, Chess and Shogi.
+In this replication study, we focus on the different network architectures which can be employed the algorithm and compare their playing and learning performance against one another.
 
 ## ToDo
 
@@ -11,7 +11,7 @@ Blabliblub.
 - [x] working implementation for tictactoe and k-in-a-row
 
 
-## NiceToHave (not necessary for the completion of the project
+## NiceToHave (not necessary for the completion of the project)
 
 - [ ] A (web) visualization which shows the current state of the game, as well as current policy and value estimation
 - [ ] A distributed version of the monte-carlo as described in the papers
@@ -22,55 +22,39 @@ Blabliblub.
 - Cpp wrapper loses nodes when executed multithreaded
 - Based on the adaptation of the weights, sometimes the cpp wrapper can fail multiple times
 
-## Literature
+## Getting Started
 
-```bibtex
-@article{silver2016alphago,
-  title={Mastering the game of Go with deep neural networks and tree search},
-  author={Silver, David and Huang, Aja and Maddison, Chris J and Guez, Arthur and Sifre, Laurent and Van Den Driessche, George and Schrittwieser, Julian and Antonoglou, Ioannis and Panneershelvam, Veda and Lanctot, Marc and others},
-  journal={nature},
-  volume={529},
-  number={7587},
-  pages={484--489},
-  year={2016},
-  publisher={Nature Publishing Group}
-}
+We use conda for managing our python dependencies. To create a new environment with the needed dependencies:
 
-@article{silver2017alphagozero,
-  title={Mastering the game of go without human knowledge},
-  author={Silver, David and Schrittwieser, Julian and Simonyan, Karen and Antonoglou, Ioannis and Huang, Aja and Guez, Arthur and Hubert, Thomas and Baker, Lucas and Lai, Matthew and Bolton, Adrian and others},
-  journal={nature},
-  volume={550},
-  number={7676},
-  pages={354--359},
-  year={2017},
-  publisher={Nature Publishing Group}
-}
-
-@article{silver2018alphazero,
-  title={A general reinforcement learning algorithm that masters chess, shogi, and Go through self-play},
-  author={Silver, David and Hubert, Thomas and Schrittwieser, Julian and Antonoglou, Ioannis and Lai, Matthew and Guez, Arthur and Lanctot, Marc and Sifre, Laurent and Kumaran, Dharshan and Graepel, Thore and others},
-  journal={Science},
-  volume={362},
-  number={6419},
-  pages={1140--1144},
-  year={2018},
-  publisher={American Association for the Advancement of Science}
-}
-
-@article{DBLP:journals/corr/HuangLW16a,
-  author    = {Gao Huang and
-               Zhuang Liu and
-               Kilian Q. Weinberger},
-  title     = {Densely Connected Convolutional Networks},
-  journal   = {CoRR},
-  volume    = {abs/1608.06993},
-  year      = {2016},
-  url       = {http://arxiv.org/abs/1608.06993},
-  eprinttype = {arXiv},
-  eprint    = {1608.06993},
-  timestamp = {Mon, 10 Sep 2018 15:49:32 +0200},
-  biburl    = {https://dblp.org/rec/journals/corr/HuangLW16a.bib},
-  bibsource = {dblp computer science bibliography, https://dblp.org}
-}
 ```
+conda env create -n alpha-zero --file environment.yml
+```
+
+All needed parameters for training a model are supplied in a json configuration file. A example for this can be seen in `config.json`.
+To start a new run of self-play learning or resume another run use `barracks.py`.`--out` to supply the name of the directory where the model weights are saved to.
+
+```
+python barracks.py config.json --out name_of_run
+```
+
+## Compiling the SWIG-Wrapper
+
+The whole self-learn pipeline is able to function without using the swig wrapper. The so performed training tends to be slower by a not so small margin.
+For a better experience we suggest to use the C++/SWIG implementation of the Monte Carlo Tree Search.
+
+For a successfull compilation of the wrapper [Libtorch]{https://pytorch.org/cppdocs/installing.html} is needed.
+We used Libtorch 1.11.0. It is important that the PyTorch Version and Libtorch version match.
+Also both need to be using the same [CUDA Toolkit]{https://developer.nvidia.com/cuda-downloads} version.
+This means the version installed manually on your system must match the version supplied in the `environment.yml`.
+
+The wrapper is build using CMake. For Windows we recommend to use the CMake GUI to generate the Projects files for a Visual Studio Project.
+Next compile the so generated Project in Release Configuration.
+The Generated files are automatically copied to correct location so that they can be used by the Python Code.
+
+## Other files
+
+Files used by use to generate the plots for the report
+- `elo_generator.py`
+- `generate_perf_diagram.py`
+- `render_elo_diagram.py`
+- `render_timing_diagram.py`
