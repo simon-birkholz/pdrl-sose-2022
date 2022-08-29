@@ -81,7 +81,7 @@ def get_model_performances(m1_folder, m2_folder):
         c = Colosseum(game, player1,
                       player2)
 
-    max_eps = 2000
+    max_eps = 800
     delta_eps = 200
 
     result = []
@@ -110,9 +110,9 @@ def get_model_performances(m1_folder, m2_folder):
 
 
 if __name__ == '__main__':
-    f_name = '6x4_densenet_lr0.01_vs_6x4_densenet_lr0.001'
-    m_name = '6x4_densenet_lr0.01'
-    m_name2 = '6x4_densenet_lr0.001'
+    f_name = '6x4_densenet_lr0.1_vs_6x4_densenet_lr0.01'
+    m_name = '6x4_densenet_lr0.1'
+    m_name2 = '6x4_densenet_lr0.01'
 
     # val = None
     # with open(f'{f_name}.pickle', 'rb') as f:

@@ -57,4 +57,4 @@ def make_elo_diagram(filename):
 
 
 if __name__ == '__main__':
-    make_elo_diagram('elo-calc-out1.jsonl')
+    # make_elo_diagram('elo-calc-out1.jsonl')
