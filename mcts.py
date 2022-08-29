@@ -1,7 +1,17 @@
+"""
+This file is used to perform a mcts (Monte Carlo Tree Search) to find promising actions for a given board position.
+"""
+
 import numpy as np
 
 
 def normalize_pd(pd):
+    """
+    Method to normalize a policy distribution.
+
+    :param pd: policy distribution
+    :return: normalized policy distribution
+    """
     whole = sum(pd)
     if whole == 0:
         raise ValueError("Invalid policy normalization")
@@ -25,7 +35,7 @@ class MonteCarloTreeSearch:
     def search(self, current_state, n_sim=10):
         """
         Performs the mcts for the current move
-        :return:
+        :return: valid action deemed best by the mcts.
         """
         tObs = self.game.to_nn_view(current_state)
 
@@ -62,6 +72,10 @@ class MonteCarloTreeSearch:
 
 
 class Node:
+    """
+    A node represents the transition from a previous board state to the current one,
+    including additional data, like the prior probability, the action value, the mean value and the visit count.
+    """
     def __init__(self, mcts, parent, state, P, V):
         self.mcts = mcts  # reference to the wrapper of the search
         self.parent = parent  # the parent node for the current node
@@ -76,7 +90,7 @@ class Node:
         return f"Node: V: {self.V} Exp: {len(self.children) > 0} T: {self.is_terminal_state()}"
 
     def print_node(self, a, p_a=0, q_a=0, n_a=0, depth=0):
-        node_str = f"Node: P: {p_a} Q: {q_a} N: {n_a} V: {self.V} Exp: {len(self.children) > 0} T: {self.is_terminal_state()}"
+        node_str = f"Node: P: {p_a} Q: {q_a} N: {n_a} V: {self.V} Exp: {len(self.children) > 0} T: {self.is_terminal_state()} "
         print('\t' * depth + str(a) + ' ' + node_str)
         for a_c, c in self.children.items():
             c.print_node(a_c, self.P[a_c], self.Q.get(a_c), self.N.get(a_c), depth + 1)
@@ -146,13 +160,16 @@ class Node:
         return selected
 
     def expand(self):
+        """
+        Expands the children of the current selected node to the game tree.
+        """
         if len(self.children) > 0:
             # node already expanded
             return
 
         for action, probability in enumerate(self.P):
 
-            # todo because policy probabilites can be zero, we need to normalize the remaining probabilities
+            # todo because policy probabilities can be zero, we need to normalize the remaining probabilities
 
             if probability > 0:
                 # child_state = apply_action(node.state, action)

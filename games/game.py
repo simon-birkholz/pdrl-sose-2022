@@ -1,4 +1,9 @@
+"""
+This file is used define the behavior of game classes.
+"""
+
 from abc import ABCMeta, abstractmethod
+
 
 class Game(metaclass=ABCMeta):
 

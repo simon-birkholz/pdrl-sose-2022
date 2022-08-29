@@ -1,3 +1,7 @@
+"""
+This file is used to define the neural networks.
+"""
+
 import os
 import random
 
@@ -11,6 +15,7 @@ import numpy as np
 
 try:
     import wandb
+
     USE_WANDB = True
 except ImportError:
     USE_WANDB = False
@@ -85,9 +90,13 @@ class ConvolutionNetwork(nn.Module):
 
         return p, v
 
+
 # TODO differences with post- and pre-activation
 
 class ResidualBlock(nn.Module):
+    """
+    A residual block as described in "Deep Residual Learning for Image Recognition" by Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun
+    """
     # Residual block
     def __init__(self, in_channels, out_channels, stride=1):
         super(ResidualBlock, self).__init__()
@@ -110,7 +119,11 @@ class ResidualBlock(nn.Module):
         out = self.relu(out)
         return out
 
+
 class ResNet(nn.Module):
+    """
+    ResNet build upon residual blocks.
+    """
     def __init__(self, num_layers, num_channels, n, action_size):
         super(ResNet, self).__init__()
 
@@ -152,9 +165,11 @@ class ResNet(nn.Module):
 
         return p, v
 
+
 class DenseBlock(nn.Module):
     """
-    A simple dense block consisting of 5 convolutional layers with Batch Normalization and ReLU activation
+    A dense block consisting of 5 convolutional layers with Batch Normalization and ReLU activation.
+    Described in "Densely Connected Convolutional Networks" by Gao Huang, Zhuang Liu, Laurens van der Maaten, Kilian Q. Weinberger
     """
 
     def __init__(self, in_channels, out_channels):
@@ -182,7 +197,7 @@ class DenseBlock(nn.Module):
         out = self.relu(torch.cat([conv1, conv2, conv3, conv4], 1))
 
         conv5 = self.relu(self.conv5(out))
-        #out = self.relu(torch.cat([conv1, conv2, conv3, conv4, conv5], 1))
+        # out = self.relu(torch.cat([conv1, conv2, conv3, conv4, conv5], 1))
 
         return conv5
 
@@ -262,22 +277,24 @@ class DenseNetwork(nn.Module):
 
         return p, v
 
-class SE_Block(nn.Module):
-        def __init__(self, c, r=16):
-            super().__init__()
-            self.squeeze = nn.AdaptiveAvgPool2d(1)
-            self.excitation = nn.Sequential(
-                nn.Linear(c, c // r, bias=False),
-                nn.ReLU(inplace=True),
-                nn.Linear(c // r, c, bias=False),
-                nn.Sigmoid()
-            )
 
-        def forward(self, x):
-            bs, c, _, _ = x.shape
-            y = self.squeeze(x).view(bs, c)
-            y = self.excitation(y).view(bs, c, 1, 1)
-            return x * y.expand_as(x)
+class SE_Block(nn.Module):
+    def __init__(self, c, r=16):
+        super().__init__()
+        self.squeeze = nn.AdaptiveAvgPool2d(1)
+        self.excitation = nn.Sequential(
+            nn.Linear(c, c // r, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Linear(c // r, c, bias=False),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        bs, c, _, _ = x.shape
+        y = self.squeeze(x).view(bs, c)
+        y = self.excitation(y).view(bs, c, 1, 1)
+        return x * y.expand_as(x)
+
 
 class SEResBlock(nn.Module):
     def __init__(self, in_channels, out_channels,
@@ -304,6 +321,7 @@ class SEResBlock(nn.Module):
         out = self.relu(out)
 
         return out
+
 
 class SENet(nn.Module):
     def __init__(self, num_layers, num_channels, n, action_size):
@@ -358,14 +376,15 @@ class AlphaZeroLoss(nn.Module):
         policy_loss = -torch.mean(torch.sum(target_ps * ps, 1))
 
         if USE_WANDB:
-            wandb.log({'value_loss' : value_loss, 'policy_loss' : policy_loss, 'loss' : value_loss + policy_loss})
+            wandb.log({'value_loss': value_loss, 'policy_loss': policy_loss, 'loss': value_loss + policy_loss})
 
         return value_loss + policy_loss
 
 
 class NetworkWrapper():
 
-    def __init__(self,n, lr, l2, n_layers, n_channels,arch = 'conv', train_use_gpu=False, libtorch_use_gpu=False, **kwargs):
+    def __init__(self, n, lr, l2, n_layers, n_channels, arch='conv', train_use_gpu=False, libtorch_use_gpu=False,
+                 **kwargs):
 
         self.num_channels = n_channels
         self.num_layers = n_layers
@@ -387,7 +406,6 @@ class NetworkWrapper():
             self.neural_network = DenseNetwork(self.num_layers, self.num_channels, self.n, self.n ** 2)
         else:
             raise ValueError("Unknown architecture")
-
 
         if self.train_use_gpu:
             self.neural_network.cuda()
@@ -430,8 +448,6 @@ class NetworkWrapper():
             tens = tens.cuda()
 
         policy, value = self.neural_network(tens)
-
-
 
         return policy.cpu().detach().numpy(), value.cpu().detach().numpy()
 

@@ -1,3 +1,7 @@
+"""
+This file is used to match up different models and baselines against each other to evaluate their performance.
+"""
+
 from random import randrange
 
 import gym
@@ -20,6 +24,10 @@ HYPER_PARAMS = {
 
 
 class Colosseum:
+    """
+    This class is used to match up two different players.
+    Should a player not be able to make a move, a fallback agent (by default a random player) is used to substitute this move.
+    """
     def __init__(self, game, player1, player2):
         self.game = game
         self.player1 = player1
@@ -27,6 +35,12 @@ class Colosseum:
         self.fallback_agent = RandomPlayer(self.game)
 
     def fight(self, game_count=100):
+        """
+        Method used to start the match between the two players.
+
+        :param game_count: how many games the players play against each other
+        :return: number of player 1 wins, number of player 2 wins, number of draws
+        """
         p1_winCount = 0
         p2_winCount = 0
         drawCount = 0

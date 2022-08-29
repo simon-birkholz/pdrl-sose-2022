@@ -23,13 +23,13 @@ HYPER_PARAMS = {
     'l2': 0.0001,
     'n_layers': 4,
     'n_channels': 256,
-    'n' : 3,
-    'arch' : 'conv'
+    'n': 3,
+    'arch': 'conv'
 }
 
 model = NetworkWrapper(**HYPER_PARAMS)
-model.load_model('3x3_long_run_conv','final')
-#swig_wrapper = NeuralNetwork('./training/checkpoint.pt', True, 10)
+model.load_model('3x3_long_run_conv', 'final')
+# swig_wrapper = NeuralNetwork('./training/checkpoint.pt', True, 10)
 
 board_size = (3, 3)
 k = 3
@@ -38,11 +38,10 @@ env = KInARow(board_size, k)
 
 agent = AiPlayer(env, model, board_size, k, False, 100, 1)
 
-
 # play against a simple ai agent
 observation = env.reset()
 step_count = 0
-start_player = random.choice([0,1])
+start_player = random.choice([0, 1])
 while True:
     env.render()
     print("\n")

@@ -1,3 +1,7 @@
+"""
+This file is used to configure and train neural networks.
+"""
+
 import threading
 
 import gym
@@ -15,6 +19,8 @@ import numpy as np
 from sklearn.utils import shuffle
 
 import os
+
+
 
 os.add_dll_directory('C:\\Program Files\\libtorch\\lib')
 
@@ -44,12 +50,22 @@ except ImportError:
 
 
 def expand_action(action, action_space):
+    """
+    Apply an action to the action_space.
+
+    :param action: integer representing an action
+    :param action_space: array keeping track of used actions
+    :return: action_space with action applied
+    """
     v = np.zeros(action_space)
     v[action] = 1
     return v
 
 
 class Worker(threading.Thread):
+    """
+    Helper class to distribute the learning process.
+    """
     global_episode = 0
     pBar = tqdm()
     save_lock = threading.Lock()
@@ -162,6 +178,20 @@ class Worker(threading.Thread):
 def learn(allparams, iterations, threads, save_dir, use_swig, libtorch_use_gpu, python_use_gpu, its_per_ep, sim_count,
           do_duelling,
           duelling_count, training_epochs, training_batchsize, **config):
+    """
+    Method the model uses to learn and save progress.
+
+    :param allparams: extra copy of all parameters
+    :param iterations: number of training iterations
+    :param threads: number of threads to be used
+    :param save_dir: direction for the save files
+    :param use_swig: use swig implementation of mcts, else the python version
+    :param its_per_ep: size of an episode
+    :param sim_count: how many simulations per mcts
+    :param do_duelling: whether the model learns by duelling previous iterations or continuously
+    :param duelling_count: how many duels the model fights
+    :param config: parameters of the config
+    """
     # initialize wandb
     if USE_WANDB:
         run = wandb.init(project='alpha-zero', entity='pdrl-alpha-zero-2022', config=dict(params=allparams))
