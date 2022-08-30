@@ -1,6 +1,6 @@
 # Contributions
 While most sections in the report and the code were initially written
-by only one person, there were generally revised by both of us.
+by only one person, they were generally revised by both of us.
 
 
 ## Report
@@ -51,7 +51,7 @@ by only one person, there were generally revised by both of us.
     `ai_player.py` [Simon Birkholz]
     `baselines.py` [Tom Speier]
     `colosseum.py` [Simon Birkholz]
-	`mcts` [Tom Speier]
+	`mcts.py` [Tom Speier]
 	`distributed_mcts` [Simon Birkholz]
 ### Plot Generation
 	`elo_generator.py` [Simon Birkholz]
