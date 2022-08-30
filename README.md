@@ -66,7 +66,7 @@ The SWIG wrapper uses the following third party dependencies:
 - `neural_network.py`: Contains the code for the neural networks in Python
 - `ai_player.py`: wrapper around the Neural Network and the MCTS. Can differentiate between the python model and the swig wrapper
 - `baselines.py`: Contains the baselines for the project
-- `cololosseum.py`: Can duell two agents against each other and report how many games are won/lost
+- `colosseum.py`: Can duell two agents against each other and report how many games are won/lost
 - `mcts`: Contains the python implementation for the mcts
 
 Files used by use to generate the plots for the report

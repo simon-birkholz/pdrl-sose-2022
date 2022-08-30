@@ -3,8 +3,8 @@ While most sections in the report and the code were initially written
 by only one person, there were generally revised by both of us.
 
 
-## Paper
-### 1 Introduction
+## Report
+### 1 Introduction [Simon Birkholz]
 ### 2 Methods
     2.1 Monte Carlo Tree Search [Tom Speier]
     2.2 NN Architectures [Shared]
@@ -31,22 +31,34 @@ by only one person, there were generally revised by both of us.
         3.3.2 Training Process [Simon Birkholz]
     3.4 Results [Simon Birkholz]
 ### 4 Discussion
-    4.1 Main Results
-    4.2 Encountered Problems
-    4.3 Threats to Validity
-        4.3.1 Evaluation
+    4.1 Main Results [Shared]
+		4.1.1 Learning Rate [Shared]
+		4.1.2 Neural Network Architectures [Shared]
+		4.1.3 Baselines [Shared]
+    4.2 Encountered Problems [Shared]
+		4.2.1 Training Durations [Shared]
+        4.3.1 Evaluation [Simon Birkholz]
     4.4 Related Work [Simon Birkholz]
     4.5 Future Work [Tom Speier]
-### 5 Conclusion
+### 5 Conclusion [Shared]
 
 
 ## Repository
 ### Source Directory
-    ai_player.py
-    barracks.py
-    baselines.py
-    colosseum.py
-    generate_perf_diagram.py
-    mcts.py
+    `barracks.py` [Shared]
+    `playing_demo.py` [Shared]
+    `neural_network.py` [Tom Speier]
+    `ai_player.py` [Simon Birkholz]
+    `baselines.py` [Tom Speier]
+    `colosseum.py` [Simon Birkholz]
+	`mcts` [Tom Speier]
+	`distributed_mcts` [Simon Birkholz]
+### Plot Generation
+	`elo_generator.py` [Simon Birkholz]
+	`generate_perf_diagram.py` [Simon Birkholz]
+	`render_elo_diagram.py` [Simon Birkholz]
+	`render_timing_diagram.py` [Simon Birkholz]
+	`render_perf_diagram.py` [Simon Birkholz]
+	
     
 
