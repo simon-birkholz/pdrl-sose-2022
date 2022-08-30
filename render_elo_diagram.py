@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 
 from pathlib import Path
 
-DELTA = 200
-
+DELTA = 500
+ENDING = 5500
 
 def make_elo_diagram(filename):
     scores = dict()
@@ -14,6 +14,8 @@ def make_elo_diagram(filename):
     with open(filename, 'r') as f:
         for line in f:
             scores = json.loads(line.strip())
+            #if scores['sim_count'] == 100:
+            #    break
 
     model_names = [('6x4_conv_lr0.1', 'orangered', 'Conv (lr=0.1)'), ('6x4_conv_lr0.01', 'red', 'Conv (lr=0.01)'),
                    ('6x4_conv_lr0.001', 'maroon', 'Conv (lr=0.001)'),
@@ -24,7 +26,11 @@ def make_elo_diagram(filename):
                    ('6x4_densenet_lr0.01', 'dodgerblue', 'DenseNet (lr=0.01)'),
                    ('6x4_densenet_lr0.001', 'royalblue', 'DenseNet (lr=0.001)')]
 
-    episodes = [i for i in range(DELTA, 2200, DELTA)]
+    model_names = [('6x4_conv_lr0.01', 'red', 'Conv (lr=0.01)'),
+                   ('6x4_resnet_lr0.001', 'darkgreen', 'ResNet (lr=0.001)'),
+                   ('6x4_densenet_lr0.01', 'dodgerblue', 'DenseNet (lr=0.01)')]
+
+    episodes = [i for i in range(DELTA, ENDING, DELTA)]
 
     # aggregate model data
     aggregated_scores = dict()
@@ -45,6 +51,10 @@ def make_elo_diagram(filename):
     colors['greedy'] = 'gold'
     titles['greedy'] = 'Greedy Player'
 
+    #for model in aggregated_scores.keys():
+    #    aggregated_scores[model] = [800 + (800 - w) for w in aggregated_scores[model]]
+
+
     for model in aggregated_scores.keys():
         plt.plot(episodes[:len(aggregated_scores[model])], aggregated_scores[model], label=titles[model], color=colors[model])
 
@@ -52,9 +62,9 @@ def make_elo_diagram(filename):
     plt.xlabel('Episode')
     plt.title('Elo performance over time')
     plt.legend()
-    plt.savefig(f'diagrams/{Path(filename).stem}.pdf')
+    plt.savefig(f'diagrams/{Path(filename).stem}.svg')
     plt.close()
 
 
 if __name__ == '__main__':
-    # make_elo_diagram('elo-calc-out1.jsonl')
+    make_elo_diagram('elo-calc-out2.jsonl')

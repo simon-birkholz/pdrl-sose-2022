@@ -37,6 +37,8 @@ To start a new run of self-play learning or resume another run use `barracks.py`
 python barracks.py config.json --out name_of_run
 ```
 
+If you want to play against a network agent use `playing_demo.py`
+
 ## Compiling the SWIG-Wrapper
 
 The whole self-learn pipeline is able to function without using the swig wrapper. The so performed training tends to be slower by a not so small margin.
@@ -51,6 +53,8 @@ The wrapper is build using CMake. For Windows we recommend to use the CMake GUI 
 Next compile the so generated Project in Release Configuration.
 The Generated files are automatically copied to correct location so that they can be used by the Python Code.
 
+The code can be found in `distributed_mcts`
+
 The SWIG wrapper uses the following third party dependencies:
 - [Catch2](https://github.com/catchorg/Catch2) licensed under the Boost Software License
 - [SpdLog](https://github.com/gabime/spdlog) licensed under the MIT License
@@ -59,8 +63,15 @@ The SWIG wrapper uses the following third party dependencies:
 
 ## Other files
 
+- `neural_network.py`: Contains the code for the neural networks in Python
+- `ai_player.py`: wrapper around the Neural Network and the MCTS. Can differentiate between the python model and the swig wrapper
+- `baselines.py`: Contains the baselines for the project
+- `cololosseum.py`: Can duell two agents against each other and report how many games are won/lost
+- `mcts`: Contains the python implementation for the mcts
+
 Files used by use to generate the plots for the report
 - `elo_generator.py`
 - `generate_perf_diagram.py`
 - `render_elo_diagram.py`
 - `render_timing_diagram.py`
+- `render_perf_diagram.py`

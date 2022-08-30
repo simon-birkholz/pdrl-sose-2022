@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import pickle
 
 
-def make_bar_plot_stacked(file_name, m1_name, m2_name, c1, c2, *, right=1800):
+def make_bar_plot_stacked(file_name, m1_name, m2_name, c1, c2, *, right=2000):
     with open(f'experiments/evaluation/{file_name}.pickle', 'rb') as f:
         values = pickle.load(f)
 
@@ -52,7 +52,24 @@ if __name__ == '__main__':
                           'tab:green')
     make_bar_plot_stacked('6x4_resnet_lr0.1_vs_6x4_resnet_lr0.001', 'ResNet (lr=0.1)', 'ResNet (lr=0.001)', 'tab:red',
                           'tab:blue')
-    make_bar_plot_stacked('6x4_resnet_lr0.01_vs_6x4_resnet_lr0.001', 'ResNet (lr=0.01)', 'ResNet (lr=0.001)', 'tab:green',
+    make_bar_plot_stacked('6x4_resnet_lr0.01_vs_6x4_resnet_lr0.001', 'ResNet (lr=0.01)', 'ResNet (lr=0.001)',
+                          'tab:green',
                           'tab:blue')
-    make_bar_plot_stacked('6x4_densenet_lr0.1_vs_6x4_densenet_lr0.01', 'DenseNet (lr=0.1)', 'DenseNet (lr=0.01)', 'tab:red',
+    make_bar_plot_stacked('6x4_densenet_lr0.1_vs_6x4_densenet_lr0.01', 'DenseNet (lr=0.1)', 'DenseNet (lr=0.01)',
+                          'tab:red',
                           'tab:green')
+    make_bar_plot_stacked('6x4_densenet_lr0.1_vs_6x4_densenet_lr0.001', 'DenseNet (lr=0.1)', 'DenseNet (lr=0.001)',
+                          'tab:red',
+                          'tab:blue')
+    make_bar_plot_stacked('6x4_densenet_lr0.01_vs_6x4_densenet_lr0.001', 'DenseNet (lr=0.01)', 'DenseNet (lr=0.001)',
+                          'tab:green',
+                          'tab:blue')
+    make_bar_plot_stacked('6x4_conv_vs_resnet', 'Conv (lr=0.01)','Resnet (lr=0.001)',
+                          'tab:red',
+                          'darkgreen', right=3000)
+    make_bar_plot_stacked('6x4_densenet_vs_resnet', 'DenseNet (lr=0.01)', 'Resnet (lr=0.001)',
+                          'dodgerblue',
+                          'darkgreen', right=3000)
+    make_bar_plot_stacked('6x4_densenet_vs_conv', 'DenseNet (lr=0.01)', 'Conv (lr=0.01)',
+                          'dodgerblue',
+                          'tab:red', right=3000)
