@@ -1,0 +1,20 @@
+{
+  "iterations": 10000,
+  "its_per_ep": 25,
+  "threads": 1,
+  "use_swig": true,
+  "libtorch_use_gpu": false,
+  "python_use_gpu": false,
+  "lr": 0.01,
+  "l2": 0.0001,
+  "n_layers": 3,
+  "n_channels": 256,
+  "arch": "densenet",
+  "n": 6,
+  "k": 4,
+  "sim_count": 100,
+  "do_duelling": false,
+  "duelling_count": 32,
+  "training_epochs": 10,
+  "training_batchsize": 512
+}

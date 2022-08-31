@@ -1,0 +1,66 @@
+BasedOnStyle: LLVM
+BinPackParameters: false
+BinPackArguments: false
+AllowAllArgumentsOnNextLine : true
+DerivePointerAlignment: true
+AlignOperands: true
+##Standard: Latest
+BreakStringLiterals: false
+CompactNamespaces: true
+Cpp11BracedListStyle: true
+## Causes errors during running when enabled
+#AllowShortLambdasOnASingleLine: SLS_All
+AlwaysBreakBeforeMultilineStrings: true
+#AlignConsecutiveDeclarations: true
+#AlignConsecutiveAssignments: true
+BreakInheritanceList: BeforeComma
+ReflowComments: false
+IndentWidth: 2
+IndentWrappedFunctionNames: true
+AlignAfterOpenBracket: AlwaysBreak
+AlignEscapedNewlinesLeft: true
+AllowShortBlocksOnASingleLine: true
+AllowShortFunctionsOnASingleLine: All
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+#BreakBeforeBinaryOperators: All
+BreakBeforeTernaryOperators: true
+BreakConstructorInitializersBeforeComma: false
+ColumnLimit: 80
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+IndentCaseLabels: true
+AllowShortCaseLabelsOnASingleLine : true
+KeepEmptyLinesAtTheStartOfBlocks: false 
+AlwaysBreakTemplateDeclarations: true
+Language: Cpp
+MaxEmptyLinesToKeep: 3
+NamespaceIndentation: All
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeParens: ControlStatements
+SpaceInEmptyParentheses: false
+SpacesBeforeTrailingComments: 1
+SpacesInAngles: false
+SpacesInParentheses: false
+PointerAlignment: Middle
+TabWidth: 2
+UseTab: Never
+#BreakBeforeBraces: Allman #//almost good, but I want SplitEmpty... set to false
+BreakBeforeBraces: Custom
+BraceWrapping:   
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
+  AfterClass: true
+  AfterEnum: true
+  AfterFunction: true
+  AfterNamespace: true
+  AfterStruct: true
+  AfterUnion: true
+  BeforeCatch: true
+  BeforeElse: true
+  AfterControlStatement: true
+FixNamespaceComments: true
+IncludeBlocks: Regroup
+IndentPPDirectives: BeforeHash
+
+
