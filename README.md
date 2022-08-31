@@ -1,5 +1,7 @@
 # Project Deep Reinforcement Learning
 
+**Project Deep Reinforcement Learning Summer Term 2022 at University of Ulm**
+
 AlphaZero is an Reinforcement Learning algorithm that leverages Neural Networks, a Monte Carlo Tree Search and self-play to perform with superhuman performance in the classic games of Go, Chess and Shogi.
 In this replication study, we focus on the different network architectures which can be employed the algorithm and compare their playing and learning performance against one another.
 
