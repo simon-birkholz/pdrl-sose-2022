@@ -285,7 +285,6 @@ cython_debug/
 /swig_test
 /gpu_test
 /training
-/diagrams
 first-tic-tac-toe-agent
 /debugging_mcts
 /3x3_duelling
