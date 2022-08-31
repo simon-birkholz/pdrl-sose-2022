@@ -42,7 +42,7 @@ If you want to play against a network agent use `playing_demo.py`
 ## Compiling the SWIG-Wrapper
 
 The whole self-learn pipeline is able to function without using the swig wrapper. The so performed training tends to be slower by a not so small margin.
-For a better experience we suggest to use the C++/SWIG implementation of the Monte Carlo Tree Search.
+For a better experience we suggest to use the C++/[SWIG](https://www.swig.org/) implementation of the Monte Carlo Tree Search.
 
 For a successfull compilation of the wrapper [Libtorch](https://pytorch.org/cppdocs/installing.html) is needed.
 We used Libtorch 1.11.0. It is important that the PyTorch Version and Libtorch version match.

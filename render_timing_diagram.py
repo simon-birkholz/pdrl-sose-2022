@@ -79,7 +79,7 @@ width = 0.15  # the width of the bars
 fig, ax = plt.subplots()
 rects1 = ax.bar(x - width * 2, python_times, width, label='Python', color='tab:grey')
 rects2 = ax.bar(x - width, swig_times_1thread, width, label='C++/SWIG (1 Thread)', color='limegreen')
-rects3 = ax.bar(x, swig_times_2thread, width, label='C++/SWIG (2 Thread)', color='forestgreen')
+rects3 = ax.bar(x, swig_times_2thread, width, label='C++/SWIG (2 Threads)', color='forestgreen')
 rects4 = ax.bar(x + width, swig_times_4thread, width, label='C++/SWIG (4 Threads)', color='green')
 rects5 = ax.bar(x + width * 2, swig_times_8thread, width, label='C++/SWIG (8 Threads)', color='darkgreen')
 
