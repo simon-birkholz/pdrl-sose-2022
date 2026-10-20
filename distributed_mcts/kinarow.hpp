@@ -5,6 +5,8 @@
 class KinaRow
 {
 public:
+  static constexpr int ongoing = -2;
+
   KinaRow(
       int boardHeight,
       int boardWidth,
@@ -16,6 +18,7 @@ public:
   std::vector<bool> get_valid() const;
   bool is_possible(int action) const;
 
+  // 1 or -1 for the winning player, 0 for a draw, ongoing otherwise
   int get_winner() const;
   int get_player() const { return player_; }
 

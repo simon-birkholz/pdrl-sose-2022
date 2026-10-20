@@ -55,7 +55,7 @@ namespace common
     {
       for (auto& t : threads)
       {
-        t = std::thread([=]() mutable -> void {
+        t = std::thread([this]() -> void {
           for (;;)
           {
             std::function<void()> task;

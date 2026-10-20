@@ -12,10 +12,10 @@ KinaRow::KinaRow(
     int curr_player)
     : height_(boardHeight),
       width_(boardWidth),
-      board_(board),
-      player_(curr_player),
       k_(k),
-      action_space_(boardHeight * boardWidth)
+      action_space_(boardHeight * boardWidth),
+      board_(std::move(board)),
+      player_(curr_player)
 {}
 
 bool KinaRow::check_won_player(const int player) const
@@ -34,8 +34,9 @@ bool KinaRow::check_won_player(const int player) const
         int count = 0;
         while (count < k_)
         {
-          const int idx = yy * width_ + xx;
-          if (idx >= 0 && idx < board_.size() && board_[idx] == player)
+          const bool on_board =
+              xx >= 0 && xx < width_ && yy >= 0 && yy < height_;
+          if (on_board && board_[yy * width_ + xx] == player)
           {
             count++;
             xx += dx;
@@ -64,7 +65,7 @@ std::vector<bool> KinaRow::get_valid() const
   {
     res[i] = board_[i] == 0;
   }
-  return std::move(res);
+  return res;
 }
 
 bool KinaRow::is_possible(int action) const { return board_[action] == 0; }
@@ -86,8 +87,7 @@ int KinaRow::get_winner() const
     // no moves available, therefore draw
     return 0;
   }
-  // return -2 if game not ended
-  return -2;
+  return ongoing;
 }
 
 void KinaRow::apply_action(int action)
@@ -98,9 +98,9 @@ void KinaRow::apply_action(int action)
 
 void KinaRow::print_board() const
 {
-  for (size_t i = 0; i < height_; i++)
+  for (int i = 0; i < height_; i++)
   {
-    for (size_t j = 0; j < width_; j++)
+    for (int j = 0; j < width_; j++)
     {
       int val = board_[i * width_ + j];
       if (val == -1)

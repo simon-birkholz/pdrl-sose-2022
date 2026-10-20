@@ -1,12 +1,5 @@
-#define ZERO_DEBUG
-
 #include "kinarow.hpp"
 
-#include <filesystem>
-#include <iostream>
-#include <memory>
-#include <string>
-#include <utility>
 #include <vector>
 
 
@@ -117,4 +110,28 @@ TEST_CASE("Testing 4x4 Kinarow with k=3", "zero::kinarow")
   KinaRow test4(4, 4, 3, test4_board, 1);
 
   REQUIRE(test4.get_winner() == 1);
+}
+
+TEST_CASE("Lines do not wrap around the board edge", "zero::kinarow")
+{
+  // (y, x) = (0,2) -> (0,3) wraps to (1,0)
+  std::vector<int> horizontal = {
+      0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+  REQUIRE(KinaRow(4, 4, 3, horizontal, 1).get_winner() == KinaRow::ongoing);
+
+  // (2,2) -> (1,3) wraps to (1,0)
+  std::vector<int> anti_diagonal = {
+      0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0};
+  REQUIRE(KinaRow(4, 4, 3, anti_diagonal, 1).get_winner() == KinaRow::ongoing);
+
+  // (0,3) wraps to (2,0) -> (3,1)
+  std::vector<int> diagonal = {
+      0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0};
+  REQUIRE(KinaRow(4, 4, 3, diagonal, 1).get_winner() == KinaRow::ongoing);
+}
+
+TEST_CASE("Full board without line is a draw", "zero::kinarow")
+{
+  std::vector<int> board = {1, -1, 1, 1, -1, -1, -1, 1, 1};
+  REQUIRE(KinaRow(3, 3, 3, board, 1).get_winner() == 0);
 }

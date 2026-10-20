@@ -1,99 +1,59 @@
 #pragma once
 
+#include "evaluator.hpp"
 #include "kinarow.hpp"
-#include "neural_network.hpp"
 #include "threadpool.hpp"
-//#include "locked_ptr.hpp"
 
-#include <atomic>
-#include <map>
+#include <condition_variable>
 #include <memory>
 #include <mutex>
 #include <utility>
 #include <vector>
 
-
-class Node;
-
-using node_ptr = std::shared_ptr<Node>;
-//using locked_node_ptr = common::locked_ptr<Node>;
+struct Node;
 
 using search_t = std::pair<std::vector<int>, int>;
+
+// Tree parallel MCTS. A single mutex guards the whole tree: selection and
+// backup are cheap compared to an evaluation, which runs without holding it.
+// Virtual loss spreads concurrent simulations over different paths, and a
+// node that is being evaluated is never handed to a second thread.
 class MonteCarloTreeSearch
 {
-  friend class Node;
-
 public:
-  // smart pointer too much headdache
-
   MonteCarloTreeSearch(
-      NeuralNetwork* network,
+      Evaluator* evaluator,
       std::pair<int, int> board_size,
       unsigned k,
       unsigned n_sim,
-      unsigned n_threads);
+      unsigned n_threads,
+      double c_puct = 1.5);
+  ~MonteCarloTreeSearch();
 
-  std::vector<double> get_action_probabilites();
-
-  void apply_action(int action);
-
-  void reset();
-
+  // Runs n_sim simulations from the given (board, player to move) and returns
+  // the root visit distribution over all board cells.
   std::vector<double> search(search_t game);
 
-  // Executes one Simulation
-  void simulate(KinaRow game);
+  void apply_action(int action);
+  void reset();
 
   int get_node_count() const;
   int get_max_depth() const;
 
 private:
-  void search_internal(search_t);
-  unsigned n_sim_;
-  unsigned k_;
-  node_ptr root_;
-  common::thread_pool tpool_;
-  NeuralNetwork* network_;
+  void simulate(KinaRow game);
+  std::vector<double> visit_distribution() const;
+
+  Evaluator* evaluator_;
   unsigned board_width_;
   unsigned board_height_;
-  double c_loss_;
-  std::mutex lock_search_;
-};
-
-class Node
-{
-public:
-  friend class MonteCarloTreeSearch;
-
-  Node();
-  Node(const Node& node);
-  Node(Node* parent, double prior);
-  Node& operator=(const Node& n);
-
-private:
-
-public:
-  inline bool is_leaf_node() const
-  {
-    return this->is_leaf_;
-  }
-  void back_propagate(double leaf_value);
-
-  int select( const double c_loss);
-  bool expand(const std::vector<double>& prior_probabilites);
-
-  double upper_confidence_bound(const double c_loss) const;
-
-  int get_node_count() const;
-  int get_max_depth() const;
-
-private:
-  Node* parent_;
-  std::map<unsigned, node_ptr> children_;
-  bool is_leaf_;
-  std::recursive_mutex lock_;
-  std::atomic<unsigned> visit_count_;
-  double prior_;
-  double action_value_;
-  std::atomic<int> virtual_loss_;
+  unsigned k_;
+  unsigned n_sim_;
+  double c_puct_;
+  std::unique_ptr<Node> root_;
+  mutable std::mutex search_mutex_;
+  std::mutex tree_mutex_;
+  std::condition_variable expansion_done_;
+  // Declared last so its workers are joined before the tree is destroyed.
+  common::thread_pool tpool_;
 };

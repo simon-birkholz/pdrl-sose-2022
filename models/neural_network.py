@@ -63,7 +63,7 @@ class ConvolutionNetwork(nn.Module):
         self.p_relu = nn.ReLU(inplace=True)
 
         self.p_lin = nn.Linear(n ** 2, action_size)
-        self.softmax = nn.Softmax(dim=0)
+        self.log_softmax = nn.LogSoftmax(dim=1)
 
         # value Head
         self.v_lin = nn.Linear(n ** 2, 256)
@@ -81,7 +81,7 @@ class ConvolutionNetwork(nn.Module):
         out = torch.flatten(out, start_dim=1)
 
         p = self.p_lin(out)
-        p = self.softmax(p)
+        p = self.log_softmax(p)
 
         # value head
         v = self.v_lin(out)
@@ -137,7 +137,7 @@ class ResNet(nn.Module):
         self.p_relu = nn.ReLU(inplace=True)
 
         self.p_lin = nn.Linear(n ** 2, action_size)
-        self.softmax = nn.Softmax(dim=0)
+        self.log_softmax = nn.LogSoftmax(dim=1)
 
         # value Head
         self.v_lin = nn.Linear(n ** 2, 256)
@@ -156,7 +156,7 @@ class ResNet(nn.Module):
         out = torch.flatten(out, start_dim=1)
 
         p = self.p_lin(out)
-        p = self.softmax(p)
+        p = self.log_softmax(p)
 
         # value head
         v = self.v_lin(out)
@@ -248,7 +248,7 @@ class DenseNetwork(nn.Module):
         self.p_relu = nn.ReLU(inplace=True)
 
         self.p_lin = nn.Linear(n ** 2, action_size)
-        self.softmax = nn.Softmax(dim=0)
+        self.log_softmax = nn.LogSoftmax(dim=1)
 
         # value Head
         self.v_lin = nn.Linear(n ** 2, 256)
@@ -268,7 +268,7 @@ class DenseNetwork(nn.Module):
         out = torch.flatten(out, start_dim=1)
 
         p = self.p_lin(out)
-        p = self.softmax(p)
+        p = self.log_softmax(p)
 
         # value head
         v = self.v_lin(out)
@@ -337,7 +337,7 @@ class SENet(nn.Module):
         self.p_relu = nn.ReLU(inplace=True)
 
         self.p_lin = nn.Linear(n ** 2, action_size)
-        self.softmax = nn.Softmax(dim=0)
+        self.log_softmax = nn.LogSoftmax(dim=1)
 
         # value Head
         self.v_lin = nn.Linear(n ** 2, 256)
@@ -356,7 +356,7 @@ class SENet(nn.Module):
         out = torch.flatten(out, start_dim=1)
 
         p = self.p_lin(out)
-        p = self.softmax(p)
+        p = self.log_softmax(p)
 
         # value head
         v = self.v_lin(out)
@@ -449,7 +449,7 @@ class NetworkWrapper():
 
         policy, value = self.neural_network(tens)
 
-        return policy.cpu().detach().numpy(), value.cpu().detach().numpy()
+        return policy.exp().cpu().detach().numpy(), value.cpu().detach().numpy()
 
     def load_model(self, folder='pretrained', filename='checkpoint'):
 

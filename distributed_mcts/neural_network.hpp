@@ -1,49 +1,45 @@
 #pragma once
 
-#include "kinarow.hpp"
+#include "evaluator.hpp"
 #include "waiting_queue.hpp"
 
-
-#include <future>
+#include <atomic>
+#include <memory>
+#include <mutex>
 #include <string>
+#include <thread>
 #include <torch/script.h>
 #include <vector>
 
-class NeuralNetwork
+// Evaluates positions with a TorchScript model that returns
+// (log move probabilities, value). Requests from concurrent searches are
+// collected into batches and run as one forward pass on a worker thread.
+class NeuralNetwork : public Evaluator
 {
 public:
-  using return_t = std::pair<std::vector<double>, double>;
-
-public:
-public:
-  NeuralNetwork(NeuralNetwork const&) = default;
-  NeuralNetwork(NeuralNetwork&&) = default;
-  NeuralNetwork& operator=(NeuralNetwork const&) = default;
-  NeuralNetwork& operator=(NeuralNetwork&&) = default;
-
   NeuralNetwork(std::string model_path, bool use_gpu, unsigned batch_size);
-  ~NeuralNetwork();
+  ~NeuralNetwork() override;
 
-public:
-  void set_batch_size(unsigned batch_size) { this->batch_size_ = batch_size; }
+  void set_batch_size(unsigned batch_size) { batch_size_ = batch_size; }
 
   void reload_weights();
   void unload_model();
 
-  std::future<return_t> evaluate(KinaRow* game);
-
-  void intern();
+  std::future<return_t> evaluate(const KinaRow& game) override;
 
 private:
   using task_t = std::pair<torch::Tensor, std::promise<return_t>>;
 
-  common::waiting_queue<task_t> task_queue_;
+  std::vector<task_t> next_batch();
+  std::vector<return_t> forward(const std::vector<torch::Tensor>& states);
+  void run_batch(std::vector<task_t> batch);
 
-  unsigned batch_size_;
-  bool use_gpu_;
-  std::unique_ptr<std::thread> loop_;
-  bool abort_;
-  std::mutex model_lock_;
-  std::unique_ptr<torch::jit::script::Module> torch_;
   std::string model_path_;
+  bool use_gpu_;
+  std::atomic<unsigned> batch_size_;
+  std::mutex model_mutex_;
+  std::unique_ptr<torch::jit::script::Module> model_;
+  common::waiting_queue<task_t> task_queue_;
+  std::atomic<bool> abort_{false};
+  std::thread worker_;
 };

@@ -6,11 +6,6 @@ set(name test_${namer})
 	
 	set( _deps extern_catch2 ${libs}) 
 	target_link_libraries(${name} ${_deps})
-	message("test: ${name} ${namer} ${_deps}")
-	if (UNIX)
-		#i dont know why this is needed
-		target_link_libraries(${name} tbb)
-	endif()
 	set(output_dir ${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>)
 	
 	#add_definitions(${name} "-DCATCH_CONFIG_MAIN")
