@@ -7,6 +7,7 @@ ${CMAKE_CURRENT_SOURCE_DIR}/kinarow.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/mcts.hpp
 ${CMAKE_CURRENT_SOURCE_DIR}/mcts.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/threadpool.hpp
+${CMAKE_CURRENT_SOURCE_DIR}/waiting_queue.hpp
 )
 target_include_directories(mcts_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 # linked into the python module
@@ -17,6 +18,9 @@ target_link_libraries(mcts_core PUBLIC Threads::Threads)
 add_zero_test(kinarow_get_winner mcts_core)
 add_zero_test(mcts_search mcts_core)
 
+add_executable(mcts_bench ${CMAKE_CURRENT_SOURCE_DIR}/bench/mcts_bench.cpp)
+target_link_libraries(mcts_bench mcts_core)
+
 if (ZERO_BUILD_BINDINGS)
   set(target_name distributed_mcts)
   set(swig_file ${CMAKE_CURRENT_SOURCE_DIR}/mcts.i)
@@ -26,7 +30,6 @@ if (ZERO_BUILD_BINDINGS)
     ${swig_file}
     ${CMAKE_CURRENT_SOURCE_DIR}/neural_network.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/neural_network.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/waiting_queue.hpp
   )
   swig_link_libraries(${target_name} mcts_core ${TORCH_LIBRARIES} ${PYTHON_LIBRARIES})
   set_target_properties(${target_name} PROPERTIES DEBUG_POSTFIX "_d")

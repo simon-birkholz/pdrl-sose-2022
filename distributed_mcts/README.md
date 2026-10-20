@@ -39,13 +39,17 @@ The wrapper uses the following third party dependencies:
 - `waiting_queue.hpp`: A queue which support threadsafe push/pop as well as conditional variables to avoid active waiting times.
 - `threadpool.hpp`: Header-Only Threadpool implementation by Andreas Franz Borchert
 - `test`: Unit tests, they use a fake evaluator and need no model
+- `bench`: Throughput benchmark of the search
 
 ## Threading model
 
-All simulations share one tree guarded by a single mutex.
-Selection and backup hold it, the network evaluation does not.
-Virtual loss makes concurrent simulations pick different paths, and a leaf that is being evaluated is marked as such: other simulations reaching it wait for its expansion instead of evaluating it a second time.
+Simulations run on a thread pool and share one tree.
+Every node has its own expansion lock: the first simulation reaching a leaf claims it, others wait on that node until it is expanded instead of evaluating it a second time.
 This guarantees one expanded node per simulation.
+Visit statistics are lock-free atomics, and virtual loss makes concurrent simulations pick different paths.
+
+`bench/mcts_bench.cpp` measures simulations per second for fake evaluators with different latencies.
+Compared to a single mutex for the whole tree, this scales up to 10x better when evaluation is cheap, but with a network taking 1 ms or more per batch the difference is below 10% on 6x6 boards.
 
 ## It can't be that hard? or?
 

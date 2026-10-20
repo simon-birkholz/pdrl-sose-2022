@@ -84,7 +84,7 @@ namespace
   { return std::accumulate(distribution.begin(), distribution.end(), 0.0); }
 } // namespace
 
-TEST_CASE("Every simulation expands a distinct node", "zero::mcts")
+TEST_CASE("Every simulation expands a distinct node", "[mcts]")
 {
   // threads colliding on a pending leaf must wait instead of evaluating it again
   UniformEvaluator evaluator;
@@ -97,7 +97,7 @@ TEST_CASE("Every simulation expands a distinct node", "zero::mcts")
   REQUIRE(evaluator.calls == sims);
 }
 
-TEST_CASE("Visit distribution covers exactly the legal moves", "zero::mcts")
+TEST_CASE("Visit distribution covers exactly the legal moves", "[mcts]")
 {
   UniformEvaluator evaluator;
   MonteCarloTreeSearch search(&evaluator, {3, 3}, 3, 400, 8);
@@ -113,7 +113,7 @@ TEST_CASE("Visit distribution covers exactly the legal moves", "zero::mcts")
   }
 }
 
-TEST_CASE("Finds the immediate win", "zero::mcts")
+TEST_CASE("Finds the immediate win", "[mcts]")
 {
   UniformEvaluator evaluator;
   MonteCarloTreeSearch search(&evaluator, {3, 3}, 3, 400, 8);
@@ -123,7 +123,7 @@ TEST_CASE("Finds the immediate win", "zero::mcts")
   REQUIRE(best_action(distribution) == 2);
 }
 
-TEST_CASE("Blocks the opponents win", "zero::mcts")
+TEST_CASE("Blocks the opponents win", "[mcts]")
 {
   // only a two ply lookahead with correct value signs sees the threat at 2
   UniformEvaluator evaluator;
@@ -134,7 +134,7 @@ TEST_CASE("Blocks the opponents win", "zero::mcts")
   REQUIRE(best_action(distribution) == 2);
 }
 
-TEST_CASE("Applying a searched move keeps its subtree", "zero::mcts")
+TEST_CASE("Applying a searched move keeps its subtree", "[mcts]")
 {
   UniformEvaluator evaluator;
   MonteCarloTreeSearch search(&evaluator, {3, 3}, 3, 200, 4);
@@ -153,7 +153,7 @@ TEST_CASE("Applying a searched move keeps its subtree", "zero::mcts")
   REQUIRE(search.get_node_count() == 0);
 }
 
-TEST_CASE("Evaluator failures propagate instead of hanging", "zero::mcts")
+TEST_CASE("Evaluator failures propagate instead of hanging", "[mcts]")
 {
   FailingEvaluator evaluator;
   MonteCarloTreeSearch search(&evaluator, {3, 3}, 3, 50, 4);
@@ -164,7 +164,7 @@ TEST_CASE("Evaluator failures propagate instead of hanging", "zero::mcts")
       search.search({std::vector<int>(9, 0), 1}), std::runtime_error);
 }
 
-TEST_CASE("Invalid positions are rejected", "zero::mcts")
+TEST_CASE("Invalid positions are rejected", "[mcts]")
 {
   UniformEvaluator evaluator;
   MonteCarloTreeSearch search(&evaluator, {3, 3}, 3, 50, 4);
@@ -177,7 +177,7 @@ TEST_CASE("Invalid positions are rejected", "zero::mcts")
       MonteCarloTreeSearch(&evaluator, {3, 3}, 3, 1, 4), std::invalid_argument);
 }
 
-TEST_CASE("Dirichlet noise spreads visits at the root", "zero::mcts")
+TEST_CASE("Dirichlet noise spreads visits at the root", "[mcts]")
 {
   // without noise moves with zero prior never get an exploration bonus
   PeakedEvaluator evaluator(27);
@@ -194,7 +194,7 @@ TEST_CASE("Dirichlet noise spreads visits at the root", "zero::mcts")
   REQUIRE(total(with_noise) == Approx(1.0));
 }
 
-TEST_CASE("Self play with tree reuse only plays legal moves", "zero::mcts")
+TEST_CASE("Self play with tree reuse only plays legal moves", "[mcts]")
 {
   UniformEvaluator evaluator;
   MonteCarloTreeSearch search(&evaluator, {4, 4}, 3, 100, 8);

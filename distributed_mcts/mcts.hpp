@@ -4,7 +4,6 @@
 #include "kinarow.hpp"
 #include "threadpool.hpp"
 
-#include <condition_variable>
 #include <memory>
 #include <mutex>
 #include <random>
@@ -15,10 +14,10 @@ struct Node;
 
 using search_t = std::pair<std::vector<int>, int>;
 
-// Tree parallel MCTS. A single mutex guards the whole tree: selection and
-// backup are cheap compared to an evaluation, which runs without holding it.
-// Virtual loss spreads concurrent simulations over different paths, and a
-// node that is being evaluated is never handed to a second thread.
+// Tree parallel MCTS with fine grained synchronization: every node has its own
+// expansion lock, visit statistics are lock free atomics. Virtual loss spreads
+// concurrent simulations over different paths, and a node that is being
+// evaluated is never handed to a second thread.
 // dirichlet_alpha > 0 mixes Dirichlet noise into the priors of each new root,
 // for exploration in self-play.
 class MonteCarloTreeSearch
@@ -61,8 +60,6 @@ private:
   std::unique_ptr<Node> root_;
   bool root_has_noise_ = false;
   mutable std::mutex search_mutex_;
-  std::mutex tree_mutex_;
-  std::condition_variable expansion_done_;
   // Declared last so its workers are joined before the tree is destroyed.
   common::thread_pool tpool_;
 };

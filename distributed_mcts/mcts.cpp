@@ -1,7 +1,10 @@
 #include "mcts.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
+#include <condition_variable>
+#include <limits>
 #include <map>
 #include <numeric>
 #include <stdexcept>
@@ -10,7 +13,8 @@ enum class NodeState
 {
   leaf,
   expanding,
-  expanded
+  expanded,
+  terminal
 };
 
 struct Node
@@ -18,46 +22,61 @@ struct Node
   Node(Node* parent, double prior) : parent(parent), prior(prior) {}
 
   Node* parent;
+  // only changed while no simulation runs
   double prior;
+
+  // Seen from the player who made the move leading to this node. Relaxed
+  // atomics suffice: the tree structure is published through expansion_mutex,
+  // the statistics only steer selection and may be read torn.
+  std::atomic<unsigned> visit_count{0};
+  std::atomic<double> value_sum{0};
+  std::atomic<unsigned> virtual_loss{0};
+
+  std::mutex expansion_mutex;
+  std::condition_variable expansion_done;
   NodeState state = NodeState::leaf;
+  // set once under expansion_mutex before state becomes expanded, read only
+  // afterwards
   std::map<int, std::unique_ptr<Node>> children;
-  unsigned visit_count = 0;
-  // Seen from the player who made the move leading to this node.
-  double value_sum = 0;
-  unsigned virtual_loss = 0;
 };
 
 namespace
 {
-  // Pending simulations count as lost visits until their result is backed up.
-  double puct(const Node& child, double sqrt_parent_visits, double c_puct)
-  {
-    const double visits = child.visit_count + child.virtual_loss;
-    const double q =
-        visits > 0 ? (child.value_sum - child.virtual_loss) / visits : 0;
-    return q + c_puct * child.prior * sqrt_parent_visits / (1 + visits);
-  }
+  constexpr auto relaxed = std::memory_order_relaxed;
 
   std::pair<int, Node*> select_child(const Node& node, double c_puct)
   {
-    const double sqrt_visits = std::sqrt(node.visit_count + node.virtual_loss);
-    const auto best = std::max_element(
-        node.children.begin(),
-        node.children.end(),
-        [&](const auto& a, const auto& b) {
-          return puct(*a.second, sqrt_visits, c_puct) <
-                 puct(*b.second, sqrt_visits, c_puct);
-        });
-    return {best->first, best->second.get()};
+    const double sqrt_visits = std::sqrt(
+        node.visit_count.load(relaxed) + node.virtual_loss.load(relaxed));
+
+    double best_score = std::numeric_limits<double>::lowest();
+    std::pair<int, Node*> best = {-1, nullptr};
+    for (const auto& [action, child] : node.children)
+    {
+      // pending simulations count as lost visits
+      const unsigned virtual_loss = child->virtual_loss.load(relaxed);
+      const double visits = child->visit_count.load(relaxed) + virtual_loss;
+      const double q =
+          visits > 0 ? (child->value_sum.load(relaxed) - virtual_loss) / visits
+                     : 0;
+      const double score =
+          q + c_puct * child->prior * sqrt_visits / (1 + visits);
+      if (score > best_score)
+      {
+        best_score = score;
+        best = {action, child.get()};
+      }
+    }
+    return best;
   }
 
   void backpropagate(Node* node, double value)
   {
     for (; node != nullptr; node = node->parent, value = -value)
     {
-      node->visit_count++;
-      node->value_sum += value;
-      node->virtual_loss--;
+      node->visit_count.fetch_add(1, relaxed);
+      node->value_sum.fetch_add(value, relaxed);
+      node->virtual_loss.fetch_sub(1, relaxed);
     }
   }
 
@@ -65,7 +84,7 @@ namespace
   {
     for (; node != nullptr; node = node->parent)
     {
-      node->virtual_loss--;
+      node->virtual_loss.fetch_sub(1, relaxed);
     }
   }
 
@@ -219,32 +238,37 @@ std::vector<double> MonteCarloTreeSearch::search(search_t game)
 
 void MonteCarloTreeSearch::simulate(KinaRow game)
 {
-  std::unique_lock lock(tree_mutex_);
-
   Node* node = root_.get();
-  node->virtual_loss++;
+  node->virtual_loss.fetch_add(1, relaxed);
+  bool claimed = false;
   while (true)
   {
-    expansion_done_.wait(
+    std::unique_lock lock(node->expansion_mutex);
+    node->expansion_done.wait(
         lock, [node] { return node->state != NodeState::expanding; });
     if (node->state == NodeState::leaf)
     {
+      claimed = game.get_winner() == KinaRow::ongoing;
+      node->state = claimed ? NodeState::expanding : NodeState::terminal;
       break;
     }
+    if (node->state == NodeState::terminal)
+    {
+      break;
+    }
+    lock.unlock();
+
     const auto [action, child] = select_child(*node, c_puct_);
     game.apply_action(action);
     node = child;
-    node->virtual_loss++;
+    node->virtual_loss.fetch_add(1, relaxed);
   }
 
-  if (const int winner = game.get_winner(); winner != KinaRow::ongoing)
+  if (!claimed)
   {
-    backpropagate(node, -winner * game.get_player());
+    backpropagate(node, -game.get_winner() * game.get_player());
     return;
   }
-
-  node->state = NodeState::expanding;
-  lock.unlock();
 
   Evaluator::return_t evaluation;
   try
@@ -253,28 +277,31 @@ void MonteCarloTreeSearch::simulate(KinaRow game)
   }
   catch (...)
   {
-    lock.lock();
-    node->state = NodeState::leaf;
+    {
+      std::lock_guard lock(node->expansion_mutex);
+      node->state = NodeState::leaf;
+    }
+    node->expansion_done.notify_all();
     revert_virtual_loss(node);
-    lock.unlock();
-    expansion_done_.notify_all();
     throw;
   }
 
   const auto& [priors, value] = evaluation;
-  lock.lock();
+  std::map<int, std::unique_ptr<Node>> children;
   for (int action = 0; action < static_cast<int>(priors.size()); action++)
   {
     if (game.is_possible(action))
     {
-      node->children.emplace(
-          action, std::make_unique<Node>(node, priors[action]));
+      children.emplace(action, std::make_unique<Node>(node, priors[action]));
     }
   }
-  node->state = NodeState::expanded;
+  {
+    std::lock_guard lock(node->expansion_mutex);
+    node->children = std::move(children);
+    node->state = NodeState::expanded;
+  }
+  node->expansion_done.notify_all();
   backpropagate(node, -value);
-  lock.unlock();
-  expansion_done_.notify_all();
 }
 
 std::vector<double> MonteCarloTreeSearch::visit_distribution() const
@@ -282,7 +309,7 @@ std::vector<double> MonteCarloTreeSearch::visit_distribution() const
   const auto& children = root_->children;
   const double total = std::accumulate(
       children.begin(), children.end(), 0.0, [](double sum, const auto& child) {
-        return sum + child.second->visit_count;
+        return sum + child.second->visit_count.load(relaxed);
       });
   if (total == 0)
   {
@@ -293,7 +320,7 @@ std::vector<double> MonteCarloTreeSearch::visit_distribution() const
   std::vector<double> distribution(board_width_ * board_height_, 0);
   for (const auto& [action, child] : children)
   {
-    distribution[action] = child->visit_count / total;
+    distribution[action] = child->visit_count.load(relaxed) / total;
   }
   return distribution;
 }
@@ -301,17 +328,16 @@ std::vector<double> MonteCarloTreeSearch::visit_distribution() const
 void MonteCarloTreeSearch::apply_action(int action)
 {
   std::lock_guard lock(search_mutex_);
+  root_has_noise_ = false;
   const auto child = root_->children.find(action);
   if (child == root_->children.end())
   {
     root_ = std::make_unique<Node>(nullptr, 1);
-    root_has_noise_ = false;
     return;
   }
   auto new_root = std::move(child->second);
   new_root->parent = nullptr;
   root_ = std::move(new_root);
-  root_has_noise_ = false;
 }
 
 void MonteCarloTreeSearch::reset()
