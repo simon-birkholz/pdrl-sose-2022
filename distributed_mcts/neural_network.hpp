@@ -8,10 +8,12 @@
 #include <mutex>
 #include <string>
 #include <thread>
-#include <torch/script.h>
+#include <torch/csrc/inductor/aoti_package/model_package_loader.h>
+#include <torch/torch.h>
 #include <vector>
 
-// Evaluates positions with a TorchScript model that returns
+// Evaluates positions with a model package compiled by torch.export and
+// AOTInductor (NetworkWrapper.export_model) that returns
 // (log move probabilities, value). Requests from concurrent searches are
 // collected into batches and run as one forward pass on a worker thread.
 class NeuralNetwork : public Evaluator
@@ -38,7 +40,7 @@ private:
   bool use_gpu_;
   std::atomic<unsigned> batch_size_;
   std::mutex model_mutex_;
-  std::unique_ptr<torch::jit::script::Module> model_;
+  std::unique_ptr<torch::inductor::AOTIModelPackageLoader> model_;
   common::waiting_queue<task_t> task_queue_;
   std::atomic<bool> abort_{false};
   std::thread worker_;

@@ -25,7 +25,7 @@ HYPER_PARAMS = {
 
 # model = NetworkWrapper(**HYPER_PARAMS)
 #model.load_model('6x4_co', 'final')
-swig_wrapper = NeuralNetwork('./6x4_resnet_lr0.001/checkpoint-ep5000.pt', True, 10)
+swig_wrapper = NeuralNetwork('./6x4_resnet_lr0.001/checkpoint-ep5000.pt2', True, 10)
 
 board_size = (6, 6)
 k = 4

@@ -100,7 +100,7 @@ class Colosseum:
 if __name__ == "__main__":
     env = KInARow((8, 8), 4)
     randomPlayer = RandomPlayer(env)
-    arena_wrapper = NeuralNetwork('./training/arena-new.pt', False, 10)
+    arena_wrapper = NeuralNetwork('./training/arena-new.pt2', False, 10)
     ai_player = AiPlayer(env, arena_wrapper, (8, 8), 4, True, 100, 1)
 
     colosseum = Colosseum(env, randomPlayer, ai_player)

@@ -6,13 +6,16 @@
 
 namespace
 {
-  std::unique_ptr<torch::jit::script::Module>
+  std::unique_ptr<torch::inductor::AOTIModelPackageLoader>
       load_model(const std::string& path, bool use_gpu)
   {
-    auto model =
-        std::make_unique<torch::jit::script::Module>(torch::jit::load(path));
-    model->eval();
-    model->to(use_gpu ? torch::kCUDA : torch::kCPU);
+    auto model = std::make_unique<torch::inductor::AOTIModelPackageLoader>(path);
+    const auto device = model->get_metadata().at("AOTI_DEVICE_KEY");
+    if ((device == "cuda") != use_gpu)
+    {
+      throw std::invalid_argument(
+          "Model package was compiled for " + device + ", export it again");
+    }
     return model;
   }
 } // namespace
@@ -94,15 +97,10 @@ std::vector<NeuralNetwork::return_t>
   }
 
   const auto device = use_gpu_ ? torch::kCUDA : torch::kCPU;
-  const auto output =
-      model_->forward({torch::cat(states).to(device)}).toTuple();
-  const auto policies = output->elements()[0]
-                            .toTensor()
-                            .exp()
-                            .to(torch::kCPU, torch::kFloat64)
-                            .contiguous();
-  const auto values =
-      output->elements()[1].toTensor().to(torch::kCPU, torch::kFloat64);
+  const auto output = model_->run({torch::cat(states).to(device)});
+  const auto policies =
+      output[0].exp().to(torch::kCPU, torch::kFloat64).contiguous();
+  const auto values = output[1].to(torch::kCPU, torch::kFloat64);
 
   std::vector<return_t> results(states.size());
   for (size_t i = 0; i < results.size(); i++)

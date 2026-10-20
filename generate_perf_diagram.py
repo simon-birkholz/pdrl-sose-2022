@@ -94,8 +94,8 @@ def get_model_performances(m1_folder, m2_folder):
             result.append((episode, p1_won, p2_won, draws))
 
         else:
-            model1 = NeuralNetwork(f'./{m1_folder}/checkpoint-ep{episode}.pt', False, 10)
-            model2 = NeuralNetwork(f'./{m2_folder}/checkpoint-ep{episode}.pt', False, 10)
+            model1 = NeuralNetwork(f'./{m1_folder}/checkpoint-ep{episode}.pt2', False, 10)
+            model2 = NeuralNetwork(f'./{m2_folder}/checkpoint-ep{episode}.pt2', False, 10)
 
             player1 = AiPlayer(game, model1, BOARD_SIZE, K, True, 100, 1)
             player2 = AiPlayer(game, model2, BOARD_SIZE, K, True, 100, 1)

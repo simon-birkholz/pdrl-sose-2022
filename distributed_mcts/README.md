@@ -15,6 +15,11 @@ cmake --build build --config Release
 ```
 
 The generated module is copied to `swig/` so that it can be used by the Python code.
+
+The C++ side loads networks as AOTInductor packages (`.pt2`), written by `NetworkWrapper.export_model` with `torch.export`.
+Exporting compiles the network to native code, so it needs a C++ compiler on the machine that exports, and takes a few seconds.
+A package only runs on the platform and device it was compiled for, so export on the machine that trains or plays.
+Older TorchScript models (`.pt`) are no longer supported: load the matching state dict checkpoint with `NetworkWrapper.load_model` and export it again.
 On Windows the module finds the libtorch DLLs as long as `torch` is imported before it.
 
 The search itself does not depend on libtorch.
@@ -33,7 +38,7 @@ The wrapper uses the following third party dependencies:
 
 - `evaluator.hpp`: Interface the search uses to evaluate positions
 - `mcts.hpp` and `mcts.cpp`: The implementation of the monte carlo tree search
-- `neural_network.hpp` and `neural_network.cpp`: Evaluator backed by a TorchScript model, batches concurrent requests into one forward pass
+- `neural_network.hpp` and `neural_network.cpp`: Evaluator backed by a model package from `torch.export`, batches concurrent requests into one forward pass
 - `kinarow.hpp` and `kinarow.cpp`: Implementation of the game wrapper
 - `mcts.i`: The definition of the swig wrapper
 - `waiting_queue.hpp`: A queue which support threadsafe push/pop as well as conditional variables to avoid active waiting times.

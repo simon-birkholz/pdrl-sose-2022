@@ -3,12 +3,13 @@ This file is used to configure and train neural networks.
 """
 
 import argparse
-import glob
 import json
 import os
 import re
+import shutil
 import threading
 import time
+from pathlib import Path
 
 import numpy as np
 from sklearn.utils import shuffle
@@ -134,7 +135,8 @@ def learn(allparams, iterations, threads, save_dir, use_swig, libtorch_use_gpu, 
     if USE_WANDB:
         run = wandb.init(project='alpha-zero', entity='pdrl-alpha-zero-2022', config=dict(params=allparams))
 
-    last_episode = max([int(ep) for f in glob.glob(save_dir + '/*.pt') for ep in re.findall(r'\d+', f)] + [0])
+    last_episode = max([int(match.group(1)) for f in Path(save_dir).glob('checkpoint-ep*')
+                        if (match := re.fullmatch(r'checkpoint-ep(\d+)', f.name))] + [0])
 
     global_model = NetworkWrapper(train_use_gpu=python_use_gpu, libtorch_use_gpu=libtorch_use_gpu, **config)
 
@@ -143,6 +145,8 @@ def learn(allparams, iterations, threads, save_dir, use_swig, libtorch_use_gpu, 
         print(f"Reloading model checkpoint-ep{last_episode}")
 
     global_model.save_model('training', 'checkpoint')
+    if use_swig:
+        global_model.export_model('training', 'checkpoint')
 
     w_threads = threads
     tree_threads = 1
@@ -153,7 +157,7 @@ def learn(allparams, iterations, threads, save_dir, use_swig, libtorch_use_gpu, 
     # one batch collects the requests of all search threads
     swig_wrapper = None
     if use_swig:
-        swig_wrapper = NeuralNetwork('./training/checkpoint.pt', libtorch_use_gpu, tree_threads)
+        swig_wrapper = NeuralNetwork('./training/checkpoint.pt2', libtorch_use_gpu, tree_threads)
 
     Worker.pBar = tqdm(total=iterations - last_episode)
 
@@ -198,7 +202,6 @@ def learn(allparams, iterations, threads, save_dir, use_swig, libtorch_use_gpu, 
         tData = list(zip(t_boards, t_actions, t_values))
 
         model_candidate.train(tData, training_batchsize, training_epochs)
-        model_candidate.save_model('training', 'arena-new')
 
         game = KInARow(BOARD_SIZE, K)
 
@@ -206,7 +209,8 @@ def learn(allparams, iterations, threads, save_dir, use_swig, libtorch_use_gpu, 
         if do_duelling:
             c = None
             if use_swig:
-                arena_wrapper = NeuralNetwork('./training/arena-new.pt', libtorch_use_gpu, tree_threads)
+                model_candidate.export_model('training', 'arena-new')
+                arena_wrapper = NeuralNetwork('./training/arena-new.pt2', libtorch_use_gpu, tree_threads)
                 c = Colosseum(game, AiPlayer(game, arena_wrapper, BOARD_SIZE, K, True, sim_count, tree_threads),
                               AiPlayer(game, swig_wrapper, BOARD_SIZE, K, True, sim_count, tree_threads))
             else:
@@ -228,14 +232,16 @@ def learn(allparams, iterations, threads, save_dir, use_swig, libtorch_use_gpu, 
                 swig_wrapper.unload_model()
             model_candidate.save_model('training', 'checkpoint')
             global_model.load_model('training', 'checkpoint')
+            archive_name = f'checkpoint-ep{(i + 1) * its_per_ep}'
+            global_model.save_model(save_dir, archive_name)
             if use_swig:
+                model_candidate.export_model('training', 'checkpoint')
                 swig_wrapper.reload_weights()
-            try:
-                global_model.save_model(save_dir, f'checkpoint-ep{(i + 1) * its_per_ep}')
-            except:
-                print("Error on saving new model")
+                shutil.copy('training/checkpoint.pt2', os.path.join(save_dir, archive_name + '.pt2'))
 
     global_model.save_model(save_dir, 'final')
+    if use_swig:
+        shutil.copy('training/checkpoint.pt2', os.path.join(save_dir, 'final.pt2'))
     if USE_WANDB:
         run.finish()
 

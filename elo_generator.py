@@ -36,12 +36,12 @@ def load_model_to_players(model_name):
     global env
     global players
     episode = DELTA
-    while os.path.exists(f'{model_name}/checkpoint-ep{episode}.pt'):
+    while os.path.exists(f'{model_name}/checkpoint-ep{episode}.pt2'):
         if not USE_SWIG:
             raise NotImplementedError("Non Swig not supported")
             # takes waaaaay to long
         else:
-            model = NeuralNetwork(f'./{model_name}/checkpoint-ep{episode}.pt', False, 10)
+            model = NeuralNetwork(f'./{model_name}/checkpoint-ep{episode}.pt2', False, 10)
             player = AiPlayer(env, model, BOARD_SIZE, K, True, 100, 1)
             players[f'{model_name}_{episode}'] = player
             episode += DELTA

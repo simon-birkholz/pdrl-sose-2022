@@ -467,21 +467,22 @@ class NetworkWrapper():
         state = {'network': self.neural_network.state_dict(), 'optim': self.optim.state_dict()}
         torch.save(state, filepath)
 
-        # save torchscript
-        filepath += '.pt'
+    def export_model(self, folder='pretrained', filename='checkpoint'):
+        """
+        Compiles the network with torch.export and AOTInductor into folder/filename.pt2, loadable by the C++ search.
+        The package only runs on the platform and device (libtorch_use_gpu) it was compiled for.
+        """
+        if not os.path.exists(folder):
+            os.mkdir(folder)
+
+        device = 'cuda' if self.libtorch_use_gpu else 'cpu'
         self.neural_network.eval()
+        self.neural_network.to(device)
 
-        if self.libtorch_use_gpu:
-            self.neural_network.cuda()
-            example = torch.rand(1, 2, self.n, self.n).cuda()
-        else:
-            self.neural_network.cpu()
-            example = torch.rand(1, 2, self.n, self.n).cpu()
+        # an example batch of 1 would let export specialize the batch dimension to 1
+        example = torch.rand(2, 2, self.n, self.n, device=device)
+        batch = torch.export.Dim('batch', min=1, max=1024)
+        exported = torch.export.export(self.neural_network, (example,), dynamic_shapes=({0: batch},))
+        torch._inductor.aoti_compile_and_package(exported, package_path=os.path.join(folder, filename + '.pt2'))
 
-        traced_script_module = torch.jit.trace(self.neural_network, example)
-        traced_script_module.save(filepath)
-
-        if self.train_use_gpu:
-            self.neural_network.cuda()
-        else:
-            self.neural_network.cpu()
+        self.neural_network.to('cuda' if self.train_use_gpu else 'cpu')
