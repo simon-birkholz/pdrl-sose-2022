@@ -45,6 +45,34 @@ namespace
     }
   };
 
+  // all prior mass on one move and a neutral value, answered synchronously
+  class PeakedEvaluator : public Evaluator
+  {
+  public:
+    explicit PeakedEvaluator(int action) : action_(action) {}
+
+    std::future<return_t> evaluate(const KinaRow& game) override
+    {
+      const auto [width, height] = game.get_board_size();
+      std::vector<double> priors(width * height, 0.0);
+      priors[action_] = 1;
+      std::promise<return_t> promise;
+      promise.set_value({priors, 0.0});
+      return promise.get_future();
+    }
+
+  private:
+    int action_;
+  };
+
+  int visited_moves(const std::vector<double>& distribution)
+  {
+    return static_cast<int>(
+        std::count_if(distribution.begin(), distribution.end(), [](double p) {
+          return p > 0;
+        }));
+  }
+
   int best_action(const std::vector<double>& distribution)
   {
     return static_cast<int>(std::distance(
@@ -145,6 +173,25 @@ TEST_CASE("Invalid positions are rejected", "zero::mcts")
       search.search({std::vector<int>(16, 0), 1}), std::invalid_argument);
   REQUIRE_THROWS_AS(
       search.search({{1, 1, 1, -1, -1, 0, 0, 0, 0}, -1}), std::runtime_error);
+  REQUIRE_THROWS_AS(
+      MonteCarloTreeSearch(&evaluator, {3, 3}, 3, 1, 4), std::invalid_argument);
+}
+
+TEST_CASE("Dirichlet noise spreads visits at the root", "zero::mcts")
+{
+  // without noise moves with zero prior never get an exploration bonus
+  PeakedEvaluator evaluator(27);
+  const search_t empty_board = {std::vector<int>(64, 0), 1};
+
+  MonteCarloTreeSearch plain(&evaluator, {8, 8}, 4, 64, 1);
+  const auto without_noise = plain.search(empty_board);
+  REQUIRE(visited_moves(without_noise) == 1);
+  REQUIRE(without_noise[27] == 1);
+
+  MonteCarloTreeSearch noisy(&evaluator, {8, 8}, 4, 64, 4, 1.5, 0.3, 0.25);
+  const auto with_noise = noisy.search(empty_board);
+  REQUIRE(visited_moves(with_noise) > 1);
+  REQUIRE(total(with_noise) == Approx(1.0));
 }
 
 TEST_CASE("Self play with tree reuse only plays legal moves", "zero::mcts")

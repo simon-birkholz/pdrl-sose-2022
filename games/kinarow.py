@@ -40,45 +40,19 @@ def flip_colors(board, n):
     return res
 
 
-def rotate_action(action, n):
-    # rotates the action id clockwise by 90
-    o_y, o_x = np.unravel_index(action, (n, n))
-    n_x = (n - 1) - o_y
-    n_y = o_x
-    return n_y * n + n_x
+def generate_symmetries(obs, policy):
+    """
+    The 8 rotations and reflections of a state, each paired with the policy transformed the same way.
 
-
-def mirror_action(action, n):
-    # mirror action
-    o_y, o_x = np.unravel_index(action, (n, n))
-    n_x = (n - 1) - o_x
-    n_y = o_y
-    return n_y * n + n_x
-
-
-def rotate_all(board, action, n):
-    boards = [board]
-    actions = [action]
-
-    for i in range(0, 3):
-        board = np.rot90(board)
-        action = rotate_action(action, n)
-        boards.append(board)
-        actions.append(action)
-
-    return boards, actions
-
-
-def generate_symmetries(obs, action):
+    :param obs: tuple of (board, player)
+    :param policy: flat move distribution for the board
+    :return: list of ((board, player), policy)
+    """
     board, player = obs
-    n = board.shape[0]
-    # flipped
-    flipped = np.fliplr(board)
-    flipped_a = mirror_action(action, n)
-
-    b1, a1 = rotate_all(board, action, n)
-    b2, a2 = rotate_all(flipped, flipped_a, n)
-    return list(zip(b1 + b2, [player for _ in range(0, 8)])), a1 + a2
+    policy_board = np.reshape(policy, board.shape)
+    transforms = [lambda x, k=k, flip=flip: np.rot90(np.fliplr(x) if flip else x, k)
+                  for flip in (False, True) for k in range(4)]
+    return [((t(board), player), t(policy_board).flatten()) for t in transforms]
 
 
 class TicTacToe(Game):

@@ -10,8 +10,6 @@ from swig.distributed_mcts import NeuralNetwork
 import mcts as old_mcts
 import numpy as np
 
-from baselines import RandomPlayer
-
 
 class AiPlayer:
     def __init__(self, game, m_name, board_size, k, use_swig=False, sim_count=50, thread_count=8, **kwargs):
@@ -45,7 +43,6 @@ class AiPlayer:
                                              thread_count)
         else:
             self.mcts = old_mcts.MonteCarloTreeSearch(self.game, self.model)
-        self.fallback_agent = RandomPlayer(game)
 
     def get_action(self, obs):
         """
@@ -54,17 +51,11 @@ class AiPlayer:
         :param obs: currently observed board state
         :return: integer representing a position on the board
         """
-        action = -1
         if self.use_swig:
-            action_probs = self.mcts.search(SearchState(obs[0].flatten().tolist(), obs[1]))
-            action_probs = list(action_probs)
-            action = np.argmax(action_probs)
+            visits = self.mcts.search(SearchState(obs[0].flatten().tolist(), obs[1]))
         else:
-            action = self.mcts.search(obs, self.sim_count)
-        if not action >= 0:
-            action = self.fallback_agent.get_action(obs)
-            print("Warning: Using fallback agent to sample random move")
-        return action
+            visits = self.mcts.search(obs, self.sim_count)
+        return int(np.argmax(visits))
 
     def inform(self, action):
         """

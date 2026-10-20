@@ -4,10 +4,6 @@ import gym
 import boardgame2
 import numpy as np
 
-import os
-
-os.add_dll_directory('C:\\Program Files\\libtorch\\lib')
-
 from models.neural_network import NetworkWrapper
 
 from baselines import GreedyPlayer

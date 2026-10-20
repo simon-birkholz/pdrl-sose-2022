@@ -1,24 +1,23 @@
 """
 This file is used to perform a mcts (Monte Carlo Tree Search) to find promising actions for a given board position.
+It is the single threaded python counterpart of the C++ search in distributed_mcts.
 """
+
+import math
 
 import numpy as np
 
 
-def normalize_pd(pd):
+class Node:
     """
-    Method to normalize a policy distribution.
+    A node is reached by a move. Its value sum is seen from the player who made that move.
+    """
 
-    :param pd: policy distribution
-    :return: normalized policy distribution
-    """
-    whole = sum(pd)
-    if whole == 0:
-        raise ValueError("Invalid policy normalization")
-    new_pd = np.zeros(len(pd))
-    for i in range(0, len(pd)):
-        new_pd[i] = pd[i] / whole
-    return new_pd
+    def __init__(self, prior):
+        self.prior = prior
+        self.visit_count = 0
+        self.value_sum = 0.0
+        self.children = {}
 
 
 class MonteCarloTreeSearch:
@@ -27,164 +26,78 @@ class MonteCarloTreeSearch:
     and hides the unnecessary details for the user
     """
 
-    def __init__(self, game, model):
-        self.game = game  # the game enviroment used for the mcts search
-        self.model = model  # the neural network used by the mcts search
-        self.head = None  # the intro node for the tree
-
-    def search(self, current_state, n_sim=10):
+    def __init__(self, game, model, c_puct=1.5, dirichlet_alpha=0.0, noise_fraction=0.25):
         """
-        Performs the mcts for the current move
-        :return: valid action deemed best by the mcts.
+        :param game: the game environment used for the search
+        :param model: network wrapper with a predict method
+        :param c_puct: exploration constant
+        :param dirichlet_alpha: if > 0, Dirichlet noise is mixed into the root priors for self-play exploration
+        :param noise_fraction: weight of the noise in the root priors
         """
-        tObs = self.game.to_nn_view(current_state)
+        self.game = game
+        self.model = model
+        self.c_puct = c_puct
+        self.dirichlet_alpha = dirichlet_alpha
+        self.noise_fraction = noise_fraction
 
-        # if self.head is None:
-        # Init initial node
-        policy, value = self.model.predict(np.array([tObs]))
-
-        policy = self.game.correct_policy(policy, current_state)
-
-        policy = normalize_pd(policy)
-
-        self.head = Node(self, None, current_state, policy, value[0])
-
-        # self.head.expand()
-
-        for i in range(0, n_sim):
-            self.head.search()
-
-        # select most visited move
-
-        most_visit_count = -1
-        selected_a = -1
-
-        for action in self.head.N.keys():
-            if self.head.N[action] > most_visit_count:
-                most_visit_count = self.head.N[action]
-                selected_a = action
-
-        # apply move to tree search
-        # self.head = self.head.children[selected_a]
-        # self.head.print_node('-')
-
-        return selected_a
-
-
-class Node:
-    """
-    A node represents the transition from a previous board state to the current one,
-    including additional data, like the prior probability, the action value, the mean value and the visit count.
-    """
-    def __init__(self, mcts, parent, state, P, V):
-        self.mcts = mcts  # reference to the wrapper of the search
-        self.parent = parent  # the parent node for the current node
-        self.state = state  # the game state represented by the current node. Tuple of (board,player)
-        self.P = P  # prior probabilities for all s_a to child nodes
-        self.Q = {}  # action value
-        self.V = V
-        self.N = {}  # visit count
-        self.children = {}
-
-    def __str__(self):
-        return f"Node: V: {self.V} Exp: {len(self.children) > 0} T: {self.is_terminal_state()}"
-
-    def print_node(self, a, p_a=0, q_a=0, n_a=0, depth=0):
-        node_str = f"Node: P: {p_a} Q: {q_a} N: {n_a} V: {self.V} Exp: {len(self.children) > 0} T: {self.is_terminal_state()} "
-        print('\t' * depth + str(a) + ' ' + node_str)
-        for a_c, c in self.children.items():
-            c.print_node(a_c, self.P[a_c], self.Q.get(a_c), self.N.get(a_c), depth + 1)
-
-    def upper_confidence_bound(self, action):
+    def search(self, state, n_sim=10):
         """
-        Calculates the upper confidence bound as given in the paper
-        :return:
+        Performs the mcts for the current move.
+
+        :param state: tuple of (board, player to move)
+        :param n_sim: number of simulations
+        :return: visit distribution over all board cells
         """
-        if action in self.N.keys():
-            U = self.P[action] / (1 + self.N[action])
-            return self.Q[action] + U
+        root = Node(1.0)
+        self._simulate(root, state)
+        if self.dirichlet_alpha > 0 and root.children:
+            noise = np.random.dirichlet([self.dirichlet_alpha] * len(root.children))
+            for child, n in zip(root.children.values(), noise):
+                child.prior = (1 - self.noise_fraction) * child.prior + self.noise_fraction * n
+        for _ in range(n_sim - 1):
+            self._simulate(root, state)
+
+        visits = np.zeros(state[0].size)
+        for action, child in root.children.items():
+            visits[action] = child.visit_count
+        if visits.sum() == 0:
+            raise RuntimeError("Search visited no moves, the position is terminal")
+        return visits / visits.sum()
+
+    def _simulate(self, node, state):
+        """
+        Runs one simulation below node.
+
+        :return: value of state for the player to move
+        """
+        winner = self.game.get_winner(state)
+        if winner is not None:
+            value = winner * state[1]
+        elif not node.children:
+            priors, value = self._evaluate(state)
+            node.children = {action: Node(prior) for action, prior in priors.items()}
         else:
-            # edge has never been visited
-            U = self.P[action]
-            return U
+            sqrt_visits = math.sqrt(node.visit_count)
+            action, child = max(node.children.items(), key=lambda item: self._puct(item[1], sqrt_visits))
+            next_state = self.game.get_next_state(state, np.unravel_index(action, state[0].shape))
+            value = -self._simulate(child, next_state)
 
-    def is_terminal_state(self):
+        node.visit_count += 1
+        node.value_sum -= value
+        return value
+
+    def _puct(self, child, sqrt_parent_visits):
+        q = child.value_sum / child.visit_count if child.visit_count > 0 else 0.0
+        return q + self.c_puct * child.prior * sqrt_parent_visits / (1 + child.visit_count)
+
+    def _evaluate(self, state):
         """
-        Returns if the current node is a terminal state
-        :return:
+        :return: dict of legal move to prior, and the value for the player to move
         """
-        res = self.mcts.game.get_winner(self.state)
-        if res is None:
-            return False
-        return True
-
-    def search(self):
-        """
-        Searches the tree by applying the mcts search algorithm
-        :return: the current Q value for the node
-        """
-        if self.is_terminal_state():
-            # terminal node found return game value
-            return (-1) ** (self.state[1] == self.mcts.game.get_winner(self.state))
-
-        if len(self.children) == 0:
-            # leaf node, expand and return network value
-            self.expand()
-            return -self.V
-
-        s_a, selected_child = self.select()
-        value = selected_child.search()
-
-        if s_a in self.Q.keys():
-            # average the Q action value and increase visit count
-            self.Q[s_a] = (self.N[s_a] * self.Q[s_a] + value) / (self.N[s_a] + 1)
-            self.N[s_a] += 1
-        else:
-            self.Q[s_a] = value
-            self.N[s_a] = 1
-
-        return -value
-
-    def select(self):
-        """
-        Selects a node by the rules given in the paper
-        :return: tuple of (a,node) where a is the action represented by the node
-        """
-        selected = None
-        max_ucb = -float('inf')
-        for action, child in self.children.items():
-            ucb = self.upper_confidence_bound(action)
-            if ucb > max_ucb:
-                max_ucb = ucb
-                selected = action, self.children[action]
-        return selected
-
-    def expand(self):
-        """
-        Expands the children of the current selected node to the game tree.
-        """
-        if len(self.children) > 0:
-            # node already expanded
-            return
-
-        for action, probability in enumerate(self.P):
-
-            # todo because policy probabilities can be zero, we need to normalize the remaining probabilities
-
-            if probability > 0:
-                # child_state = apply_action(node.state, action)
-
-                s_a = np.unravel_index(action, self.state[0].shape)
-
-                child_state, v, done, _ = self.mcts.game.next_step(self.state, s_a)
-
-                tChildState = self.mcts.game.to_nn_view(child_state)
-
-                child_policy, child_value = self.mcts.model.predict(np.array([tChildState]))
-                if not done:
-                    child_policy = self.mcts.game.correct_policy(child_policy, child_state)
-                    child_policy = normalize_pd(child_policy)
-                    self.children[action] = Node(self.mcts, self, child_state, child_policy, child_value[0])
-                else:
-                    inv_policy = np.zeros(child_policy.shape)
-                    self.children[action] = Node(self.mcts, self, child_state, inv_policy, child_value[0])
+        policy, value = self.model.predict(np.array([self.game.to_nn_view(state)]))
+        legal = np.flatnonzero(np.array(self.game.get_valid(state)).flatten())
+        priors = np.maximum(policy[0][legal], 0)
+        if priors.sum() <= 0:
+            # all mass on illegal moves, fall back to uniform over legal ones
+            priors = np.ones(len(legal))
+        return dict(zip(legal.tolist(), priors / priors.sum())), float(value[0][0])

@@ -16,5 +16,8 @@
   "do_duelling": false,
   "duelling_count": 32,
   "training_epochs": 10,
-  "training_batchsize": 512
+  "training_batchsize": 512,
+  "c_puct": 1.5,
+  "dirichlet_alpha": 0.3,
+  "temperature_moves": 8
 }

@@ -102,6 +102,22 @@ namespace
     return {std::move(priors), value};
   }
 
+  void add_dirichlet_noise(
+      Node& node, double alpha, double fraction, std::mt19937& rng)
+  {
+    std::gamma_distribution<double> gamma(alpha, 1.0);
+    std::vector<double> noise(node.children.size());
+    std::generate(noise.begin(), noise.end(), [&] { return gamma(rng); });
+    const double total = std::accumulate(noise.begin(), noise.end(), 0.0);
+
+    auto sample = noise.begin();
+    for (auto& [action, child] : node.children)
+    {
+      child->prior =
+          (1 - fraction) * child->prior + fraction * *sample++ / total;
+    }
+  }
+
   int count_expanded(const Node& node)
   {
     return std::accumulate(
@@ -131,16 +147,26 @@ MonteCarloTreeSearch::MonteCarloTreeSearch(
     unsigned k,
     unsigned n_sim,
     unsigned n_threads,
-    double c_puct)
+    double c_puct,
+    double dirichlet_alpha,
+    double noise_fraction)
     : evaluator_(evaluator),
       board_width_(board_size.first),
       board_height_(board_size.second),
       k_(k),
       n_sim_(n_sim),
       c_puct_(c_puct),
+      dirichlet_alpha_(dirichlet_alpha),
+      noise_fraction_(noise_fraction),
+      rng_(std::random_device{}()),
       root_(std::make_unique<Node>(nullptr, 1)),
       tpool_(n_threads)
-{}
+{
+  if (n_sim_ < 2)
+  {
+    throw std::invalid_argument("n_sim must be at least 2");
+  }
+}
 
 MonteCarloTreeSearch::~MonteCarloTreeSearch() = default;
 
@@ -155,7 +181,15 @@ std::vector<double> MonteCarloTreeSearch::search(search_t game)
   const KinaRow root_game(
       board_height_, board_width_, k_, std::move(game.first), game.second);
 
-  std::vector<std::future<void>> simulations(n_sim_);
+  // runs alone so that the root is expanded before noise is mixed in
+  simulate(root_game);
+  if (dirichlet_alpha_ > 0 && !root_has_noise_)
+  {
+    add_dirichlet_noise(*root_, dirichlet_alpha_, noise_fraction_, rng_);
+    root_has_noise_ = true;
+  }
+
+  std::vector<std::future<void>> simulations(n_sim_ - 1);
   std::generate(simulations.begin(), simulations.end(), [&] {
     return tpool_.submit([this, &root_game] { simulate(root_game); });
   });
@@ -253,7 +287,7 @@ std::vector<double> MonteCarloTreeSearch::visit_distribution() const
   if (total == 0)
   {
     throw std::runtime_error(
-        "Search visited no moves, the position is terminal or n_sim < 2");
+        "Search visited no moves, the position is terminal");
   }
 
   std::vector<double> distribution(board_width_ * board_height_, 0);
@@ -271,17 +305,20 @@ void MonteCarloTreeSearch::apply_action(int action)
   if (child == root_->children.end())
   {
     root_ = std::make_unique<Node>(nullptr, 1);
+    root_has_noise_ = false;
     return;
   }
   auto new_root = std::move(child->second);
   new_root->parent = nullptr;
   root_ = std::move(new_root);
+  root_has_noise_ = false;
 }
 
 void MonteCarloTreeSearch::reset()
 {
   std::lock_guard lock(search_mutex_);
   root_ = std::make_unique<Node>(nullptr, 1);
+  root_has_noise_ = false;
 }
 
 int MonteCarloTreeSearch::get_node_count() const

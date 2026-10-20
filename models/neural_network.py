@@ -328,7 +328,7 @@ class SENet(nn.Module):
         super(SENet, self).__init__()
 
         # se residual block
-        res_list = [SEResBlock(2, num_channels)] + [SEResBlock(num_channels, num_channels) for _ in range(num_layers)]
+        res_list = [ConvBlock(2, num_channels)] + [SEResBlock(num_channels, num_channels) for _ in range(num_layers)]
         self.res_layers = nn.Sequential(*res_list)
 
         # policy head
@@ -372,7 +372,7 @@ class AlphaZeroLoss(nn.Module):
         super(AlphaZeroLoss, self).__init__()
 
     def forward(self, ps, vs, target_ps, target_vs):
-        value_loss = torch.mean(torch.pow(vs - target_vs, 2))
+        value_loss = torch.mean(torch.pow(vs.squeeze(1) - target_vs, 2))
         policy_loss = -torch.mean(torch.sum(target_ps * ps, 1))
 
         if USE_WANDB:
@@ -403,7 +403,7 @@ class NetworkWrapper():
         elif arch == 'densenet':
             self.neural_network = DenseNetwork(self.num_layers, self.num_channels, self.n, self.n ** 2)
         elif arch == 'senet':
-            self.neural_network = DenseNetwork(self.num_layers, self.num_channels, self.n, self.n ** 2)
+            self.neural_network = SENet(self.num_layers, self.num_channels, self.n, self.n ** 2)
         else:
             raise ValueError("Unknown architecture")
 
